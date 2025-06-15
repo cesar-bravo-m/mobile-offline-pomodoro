@@ -11,6 +11,8 @@ const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
 const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
+const DEFAULT_BACKGROUND = '#fdf1ef';
+const VICTORY_GREEN = '#4CAF50';
 
 TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
   try {
@@ -57,6 +59,7 @@ const CircularTimer = () => {
   const [isEditingDuration, setIsEditingDuration] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
 
@@ -159,6 +162,14 @@ const CircularTimer = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (secondsLeft === 0) {
+      setBackgroundColor(VICTORY_GREEN);
+    } else {
+      setBackgroundColor(DEFAULT_BACKGROUND);
+    }
+  }, [secondsLeft]);
+
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 2 * Math.PI * 100],
@@ -204,6 +215,7 @@ const CircularTimer = () => {
   const resetTimer = () => {
     setSecondsLeft(totalSeconds);
     setIsRunning(false);
+    setBackgroundColor(DEFAULT_BACKGROUND);
     animatedValue.setValue(0);
   };
 
@@ -242,11 +254,12 @@ const CircularTimer = () => {
     setSecondsLeft(newTotalSeconds);
     setIsEditingDuration(false);
     setIsRunning(false);
+    setBackgroundColor(DEFAULT_BACKGROUND);
     animatedValue.setValue(0);
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor }]}>
       <View style={styles.titleContainer}>
         <Text style={styles.title}>{title}</Text>
         <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
@@ -331,7 +344,6 @@ const CircularTimer = () => {
         {
           !isRunning && secondsLeft === 0 && <Text style={styles.runningText}>Done! 🎉</Text>
         }
-        {/* <Text style={styles.runningText}>{isRunning ? 'Running...' : 'Paused'}</Text> */}
       </View>
 
       <Modal
@@ -411,6 +423,10 @@ const CircularTimer = () => {
             </TouchableOpacity>
           )
         }
+        {/* DEV ONLY: Jump to 0 */}
+        <TouchableOpacity style={styles.button} onPress={() => setSecondsLeft(0)}>
+          <Text style={styles.buttonText}>Jump to 0</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -424,7 +440,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
-    backgroundColor: '#fdf1ef',
     flex: 1,
   },
   svgContainer: {
