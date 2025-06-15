@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundFetch from 'expo-background-fetch';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
-const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
+const TIMER_INTERVALS = [1, 5, 10, 15, 20, 25, 30, 45, 60];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
@@ -61,9 +62,18 @@ const CircularTimer = () => {
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
   const [showCelebration, setShowCelebration] = useState(false);
-  const animatedValue = useRef(new Animated.Value(1)).current;
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const animatedValue = useRef(new Animated.Value(0)).current;
   const gradientAnim = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (keepScreenOn) {
+      activateKeepAwake();
+    } else {
+      deactivateKeepAwake();
+    }
+  }, [keepScreenOn]);
 
   // Register background task
   useEffect(() => {
@@ -214,7 +224,7 @@ const CircularTimer = () => {
 
       Animated.timing(animatedValue, {
         toValue: 1,
-        duration: totalSeconds * 1000,
+        duration: secondsLeft * 1000,
         useNativeDriver: false,
         easing: Easing.linear,
       }).start();
@@ -223,7 +233,7 @@ const CircularTimer = () => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, animatedValue]);
+  }, [isRunning, animatedValue, secondsLeft]);
 
   const formatTime = (sec: number) => {
     const min = Math.floor(sec / 60);
@@ -234,6 +244,7 @@ const CircularTimer = () => {
   const pauseTimer = () => {
     setIsRunning(false);
     clearInterval(intervalRef.current!);
+    animatedValue.stopAnimation();
   };
 
   const resetTimer = () => {
@@ -245,7 +256,9 @@ const CircularTimer = () => {
 
   const startTimer = () => {
     setIsRunning(true);
-    animatedValue.setValue(0);
+    if (secondsLeft === totalSeconds) {
+      animatedValue.setValue(0);
+    }
   };
 
   const handleEdit = () => {
@@ -459,6 +472,16 @@ const CircularTimer = () => {
           <Text style={styles.buttonText}>Jump to 0</Text>
         </TouchableOpacity> */}
       </View>
+
+      <View style={styles.keepAwakeContainer}>
+        <Text style={styles.keepAwakeText}>Keep screen on</Text>
+        <Switch
+          value={keepScreenOn}
+          onValueChange={setKeepScreenOn}
+          trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
+          thumbColor={keepScreenOn ? '#fff' : '#f4f3f4'}
+        />
+      </View>
     </View>
   );
 };
@@ -646,6 +669,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  keepAwakeContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+  keepAwakeText: {
+    color: '#402050',
+    fontSize: 16,
   },
 });
 
