@@ -6,8 +6,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
-const DEFAULT_MINUTES = 15;
+const TIMER_INTERVALS = [1, 5, 10, 15, 20, 25, 30, 45, 60];
+const DEFAULT_MINUTES = 1;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
 const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';

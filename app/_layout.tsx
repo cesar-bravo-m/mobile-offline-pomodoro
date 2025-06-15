@@ -11,7 +11,7 @@ import Main from './(main)/index';
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   useEffect(() => {
-    NavigationBar.setBackgroundColorAsync('black');
+    NavigationBar.setButtonStyleAsync('dark');
   }, []);
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
