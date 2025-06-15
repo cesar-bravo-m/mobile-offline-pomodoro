@@ -7,7 +7,7 @@ import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Text, TextIn
 import Svg, { Circle } from 'react-native-svg';
 
 const TIMER_INTERVALS = [1, 5, 10, 15, 20, 25, 30, 45, 60];
-const DEFAULT_MINUTES = 1;
+const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
 const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
@@ -322,7 +322,16 @@ const CircularTimer = () => {
             <Ionicons name="pencil" size={20} color="#402050" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.runningText}>{isRunning ? 'Running...' : 'Paused'}</Text>
+        { 
+          isRunning && <Text style={styles.runningText}>Running...</Text>
+        }
+        {
+          !isRunning && secondsLeft > 0 && <Text style={styles.runningText}>Paused</Text>
+        }
+        {
+          !isRunning && secondsLeft === 0 && <Text style={styles.runningText}>Done! 🎉</Text>
+        }
+        {/* <Text style={styles.runningText}>{isRunning ? 'Running...' : 'Paused'}</Text> */}
       </View>
 
       <Modal
@@ -382,7 +391,7 @@ const CircularTimer = () => {
           )
         }
         {
-          !isRunning && secondsLeft !== totalSeconds && (
+          !isRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
             <TouchableOpacity style={styles.button} onPress={startTimer}>
               <Text style={styles.buttonText}>Resume</Text>
             </TouchableOpacity>
