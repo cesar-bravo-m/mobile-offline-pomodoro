@@ -5,14 +5,14 @@ import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import Fireworks from './Fireworks';
 
-const TIMER_INTERVALS = [1, 5, 10, 15, 20, 25, 30, 45, 60];
+const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
 const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
 const DEFAULT_BACKGROUND = '#fdf1ef';
-const VICTORY_GREEN = '#4CAF50';
 
 TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
   try {
@@ -60,7 +60,9 @@ const CircularTimer = () => {
   const [tempTitle, setTempTitle] = useState(title);
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [showCelebration, setShowCelebration] = useState(false);
+  const animatedValue = useRef(new Animated.Value(1)).current;
+  const gradientAnim = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
 
   // Register background task
@@ -99,8 +101,7 @@ const CircularTimer = () => {
           setIsRunning(state.isRunning && newSecondsLeft > 0);
           setTotalSeconds(state.totalSeconds);
           
-          const progress = 1 - (newSecondsLeft / TOTAL_SECONDS);
-          console.log("### progress", progress);
+          const progress = newSecondsLeft / state.totalSeconds;
           animatedValue.setValue(progress);
         }
       } catch (error) {
@@ -150,7 +151,7 @@ const CircularTimer = () => {
           setIsRunning(state.isRunning && newSecondsLeft > 0);
           setTotalSeconds(state.totalSeconds);
           
-          const progress = 1 - (newSecondsLeft / TOTAL_SECONDS);
+          const progress = newSecondsLeft / TOTAL_SECONDS;
           animatedValue.setValue(progress);
         }
       }
@@ -164,15 +165,38 @@ const CircularTimer = () => {
 
   useEffect(() => {
     if (secondsLeft === 0) {
-      setBackgroundColor(VICTORY_GREEN);
+      setShowCelebration(true);
+
+      // Reset and start rainbow animation (two cycles)
+      gradientAnim.setValue(0);
+      const loop = Animated.loop(
+        Animated.timing(gradientAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
+        { iterations: 2 }
+      );
+      loop.start();
+
+      const celebrationTimeout = setTimeout(() => {
+        setShowCelebration(false);
+      }, 5000);
+
+      return () => {
+        loop.stop();
+        clearTimeout(celebrationTimeout);
+      };
     } else {
-      setBackgroundColor(DEFAULT_BACKGROUND);
+      setShowCelebration(false);
+      gradientAnim.stopAnimation();
     }
   }, [secondsLeft]);
 
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 2 * Math.PI * 100],
+    outputRange: [2 * Math.PI * 100, 0],
   });
 
   useEffect(() => {
@@ -190,7 +214,7 @@ const CircularTimer = () => {
 
       Animated.timing(animatedValue, {
         toValue: 1,
-        duration: TOTAL_SECONDS * 1000,
+        duration: totalSeconds * 1000,
         useNativeDriver: false,
         easing: Easing.linear,
       }).start();
@@ -221,6 +245,7 @@ const CircularTimer = () => {
 
   const startTimer = () => {
     setIsRunning(true);
+    animatedValue.setValue(0);
   };
 
   const handleEdit = () => {
@@ -258,8 +283,14 @@ const CircularTimer = () => {
     animatedValue.setValue(0);
   };
 
+  // Default -> Victory red -> Default
+  const rainbowColors = ['#f26b5b', '#FF6b5b', '#f26b5b'];
+  const inputRange = rainbowColors.map((_, idx) => idx / (rainbowColors.length - 1));
+  const strokeColor = secondsLeft === 0 ? gradientAnim.interpolate({ inputRange, outputRange: rainbowColors }) : '#f26b5b';
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
+      <Fireworks isActive={showCelebration} />
       <View style={styles.titleContainer}>
         <Text style={styles.title}>{title}</Text>
         <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
@@ -308,7 +339,7 @@ const CircularTimer = () => {
             cx="110"
             cy="110"
             r="100"
-            stroke="#f26b5b"
+            stroke={strokeColor as any}
             strokeWidth="12"
             strokeDasharray={2 * Math.PI * 100}
             strokeDashoffset={strokeDashoffset}
@@ -424,9 +455,9 @@ const CircularTimer = () => {
           )
         }
         {/* DEV ONLY: Jump to 0 */}
-        <TouchableOpacity style={styles.button} onPress={() => setSecondsLeft(0)}>
+        {/* <TouchableOpacity style={styles.button} onPress={() => setSecondsLeft(0)}>
           <Text style={styles.buttonText}>Jump to 0</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
