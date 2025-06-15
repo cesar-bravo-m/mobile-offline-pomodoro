@@ -1,9 +1,9 @@
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { StyleSheet, View } from 'react-native';
 import Main from './(main)/index';
 
 export default function RootLayout() {
@@ -17,7 +17,7 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fdf1ef' }}>
+    <View style={styles.container}>
       <Main />
       <StatusBar
         style="dark"
@@ -29,9 +29,10 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdf1ef',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   },
 });
