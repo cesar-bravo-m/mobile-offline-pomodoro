@@ -1,19 +1,163 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-const TOTAL_SECONDS = 15 * 60;
+const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
+const DEFAULT_MINUTES = 15;
+const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
+const TIMER_STATE_KEY = '@timer_state';
+const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
+
+TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
+  try {
+    const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
+    if (savedState) {
+      const state: TimerState = JSON.parse(savedState);
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
+      
+      let newSecondsLeft = state.secondsLeft;
+      if (state.isRunning) {
+        newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
+      }
+      
+      const newState: TimerState = {
+        secondsLeft: newSecondsLeft,
+        isRunning: state.isRunning && newSecondsLeft > 0,
+        lastUpdated: now,
+        totalSeconds: state.totalSeconds,
+      };
+      
+      await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(newState));
+    }
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.error('Background task error:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
+
+interface TimerState {
+  secondsLeft: number;
+  isRunning: boolean;
+  lastUpdated: number;
+  totalSeconds: number;
+}
 
 const CircularTimer = () => {
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
+  const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
   const [isRunning, setIsRunning] = useState(true);
   const [title, setTitle] = useState('Focus');
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingDuration, setIsEditingDuration] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
+
+  // Register background task
+  useEffect(() => {
+    const registerBackgroundTask = async () => {
+      try {
+        await BackgroundFetch.registerTaskAsync(BACKGROUND_TIMER_TASK, {
+          minimumInterval: 1, // 1 second
+          stopOnTerminate: false,
+          startOnBoot: true,
+        });
+      } catch (err) {
+        console.error("Task registration failed:", err);
+      }
+    };
+
+    registerBackgroundTask();
+  }, []);
+
+  // Load saved timer state when component mounts
+  useEffect(() => {
+    const loadTimerState = async () => {
+      try {
+        const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
+        if (savedState) {
+          const state: TimerState = JSON.parse(savedState);
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
+          
+          let newSecondsLeft = state.secondsLeft;
+          if (state.isRunning) {
+            newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
+          }
+          
+          setSecondsLeft(newSecondsLeft);
+          setIsRunning(state.isRunning && newSecondsLeft > 0);
+          setTotalSeconds(state.totalSeconds);
+          
+          const progress = 1 - (newSecondsLeft / TOTAL_SECONDS);
+          console.log("### progress", progress);
+          animatedValue.setValue(progress);
+        }
+      } catch (error) {
+        console.error('Error loading timer state:', error);
+      }
+    };
+
+    loadTimerState();
+  }, []);
+
+  // Save timer state whenever it changes
+  useEffect(() => {
+    const saveTimerState = async () => {
+      try {
+        const state: TimerState = {
+          secondsLeft,
+          isRunning,
+          lastUpdated: Date.now(),
+          totalSeconds,
+        };
+        await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
+      } catch (error) {
+        console.error('Error saving timer state:', error);
+      }
+    };
+
+    saveTimerState();
+  }, [secondsLeft, isRunning, totalSeconds]);
+
+  // Handle app state changes
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        // App came to foreground, load the latest state
+        const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
+        if (savedState) {
+          const state: TimerState = JSON.parse(savedState);
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
+          
+          let newSecondsLeft = state.secondsLeft;
+          if (state.isRunning) {
+            newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
+          }
+          
+          setSecondsLeft(newSecondsLeft);
+          setIsRunning(state.isRunning && newSecondsLeft > 0);
+          setTotalSeconds(state.totalSeconds);
+          
+          const progress = 1 - (newSecondsLeft / TOTAL_SECONDS);
+          animatedValue.setValue(progress);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -58,7 +202,7 @@ const CircularTimer = () => {
   };
 
   const resetTimer = () => {
-    setSecondsLeft(TOTAL_SECONDS);
+    setSecondsLeft(totalSeconds);
     setIsRunning(false);
     animatedValue.setValue(0);
   };
@@ -90,6 +234,15 @@ const CircularTimer = () => {
     if (wasRunningBeforeEdit) {
       startTimer();
     }
+  };
+
+  const handleDurationSelect = (minutes: number) => {
+    const newTotalSeconds = minutes * 60;
+    setTotalSeconds(newTotalSeconds);
+    setSecondsLeft(newTotalSeconds);
+    setIsEditingDuration(false);
+    setIsRunning(false);
+    animatedValue.setValue(0);
   };
 
   return (
@@ -154,19 +307,82 @@ const CircularTimer = () => {
         </Svg>
       </View>
       <View style={styles.timerTextContainer}>
-        <Text style={styles.timeText}>{formatTime(secondsLeft)}</Text>
+        <View style={styles.timerTextRow}>
+          <Text style={styles.timeText}>{formatTime(secondsLeft)}</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              setWasRunningBeforeEdit(isRunning);
+              if (isRunning) {
+                pauseTimer();
+              }
+              setIsEditingDuration(true);
+            }} 
+            style={styles.iconButton}
+          >
+            <Ionicons name="pencil" size={20} color="#402050" />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.runningText}>{isRunning ? 'Running...' : 'Paused'}</Text>
       </View>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isEditingDuration}
+        onRequestClose={() => {
+          setIsEditingDuration(false);
+          if (wasRunningBeforeEdit) {
+            startTimer();
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Duration</Text>
+            <View style={styles.durationGrid}>
+              {TIMER_INTERVALS.map((minutes) => (
+                <TouchableOpacity
+                  key={minutes}
+                  style={[
+                    styles.durationButton,
+                    minutes === totalSeconds / 60 && styles.selectedDurationButton
+                  ]}
+                  onPress={() => handleDurationSelect(minutes)}
+                >
+                  <Text style={[
+                    styles.durationButtonText,
+                    minutes === totalSeconds / 60 && styles.selectedDurationButtonText
+                  ]}>
+                    {minutes}m
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => {
+                setIsEditingDuration(false);
+                if (wasRunningBeforeEdit) {
+                  startTimer();
+                }
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.buttonContainer}>
         {
-          !isRunning && secondsLeft === TOTAL_SECONDS && (
+          !isRunning && secondsLeft === totalSeconds && (
             <TouchableOpacity style={styles.button} onPress={startTimer}>
               <Text style={styles.buttonText}>Start</Text>
             </TouchableOpacity>
           )
         }
         {
-          !isRunning && secondsLeft !== TOTAL_SECONDS && (
+          !isRunning && secondsLeft !== totalSeconds && (
             <TouchableOpacity style={styles.button} onPress={startTimer}>
               <Text style={styles.buttonText}>Resume</Text>
             </TouchableOpacity>
@@ -180,7 +396,7 @@ const CircularTimer = () => {
           )
         }
         {
-          !isRunning && (
+          !isRunning && secondsLeft !== totalSeconds && (
             <TouchableOpacity style={styles.resetButton} onPress={resetTimer}>
               <Text style={styles.buttonText}>Reset</Text>
             </TouchableOpacity>
@@ -234,7 +450,13 @@ const styles = StyleSheet.create({
   },
   timerTextContainer: {
     marginTop: Dimensions.get('window').height/2.2,
+    marginLeft: 10,
     position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerTextRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -329,7 +551,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-  }
+  },
+  durationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 20,
+  },
+  durationButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#f4d2cd',
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 5,
+  },
+  selectedDurationButton: {
+    backgroundColor: '#f26b5b',
+  },
+  durationButtonText: {
+    fontSize: 18,
+    color: '#402050',
+    fontWeight: '600',
+  },
+  selectedDurationButtonText: {
+    color: '#fff',
+  },
+  closeButton: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#f26b5b',
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 export default CircularTimer;
