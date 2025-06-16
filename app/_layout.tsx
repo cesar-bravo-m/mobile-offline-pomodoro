@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    width: Dimensions.get('window').width,
+    width: '100%',
     height: Dimensions.get('window').height,
   },
 });

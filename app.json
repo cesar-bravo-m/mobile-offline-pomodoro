@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "cl.bcyt.pomodoro",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,6 +38,18 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c12f58ac-2588-47ca-a36b-2c88a742255d"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c12f58ac-2588-47ca-a36b-2c88a742255d"
     }
   }
 }

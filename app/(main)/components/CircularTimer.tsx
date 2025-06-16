@@ -5,7 +5,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
@@ -56,6 +56,10 @@ interface TimerState {
 }
 
 const CircularTimer = () => {
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const isTablet = width >= 600;
+  const timerSize = isTablet ? 300 : 250;
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
   const [isRunning, setIsRunning] = useState(true);
@@ -379,13 +383,124 @@ const CircularTimer = () => {
   }, [mode]);
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
+    <View style={[styles.container, { backgroundColor, width: '100%', height: '100%' }]}>
       <Fireworks isActive={showCelebration} />
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>{mode === 'focus' ? 'Focus' : 'Break'}</Text>
-        <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
-          <Ionicons name="pencil" size={20} color="#402050" />
-        </TouchableOpacity>
+      <View style={[styles.mainContent, isLandscape && styles.mainContentLandscape]}>
+        <View style={styles.leftSection}>
+          <View style={[styles.titleContainer, isLandscape && styles.titleContainerLandscape]}>
+            <Text style={styles.title}>{mode === 'focus' ? 'Focus' : 'Break'}</Text>
+            <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
+              <Ionicons name="pencil" size={20} color="#402050" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.svgContainer, isLandscape && styles.svgContainerLandscape]}>
+            <Svg height={timerSize} width={timerSize} viewBox="0 0 220 220">
+              <Circle
+                cx="110"
+                cy="110"
+                r="100"
+                stroke="#f4d2cd"
+                strokeWidth="12"
+                fill="none"
+              />
+              <AnimatedCircle
+                cx="110"
+                cy="110"
+                r="100"
+                stroke={strokeColor as any}
+                strokeWidth="12"
+                strokeDasharray={2 * Math.PI * 100}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="none"
+                rotation="-90"
+                origin="110, 110"
+              />
+            </Svg>
+          </View>
+        </View>
+
+        <View style={[styles.rightSection, isLandscape && styles.rightSectionLandscape]}>
+          <View style={[styles.timerTextContainer, isLandscape && styles.timerTextContainerLandscape]}>
+            <View style={styles.timerTextRow}>
+              <Text style={[styles.timeText, isTablet && styles.timeTextTablet]}>{formatTime(secondsLeft)}</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setWasRunningBeforeEdit(isRunning);
+                  if (isRunning) {
+                    pauseTimer();
+                  }
+                  setIsEditingDuration(true);
+                }} 
+                style={styles.iconButton}
+              >
+                <Ionicons name="pencil" size={20} color="#402050" />
+              </TouchableOpacity>
+            </View>
+            { 
+              isRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
+            }
+            {
+              !isRunning && secondsLeft > 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Paused</Text>
+            }
+            {
+              !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
+            }
+          </View>
+
+          <View style={[styles.buttonContainer, isLandscape && styles.buttonContainerLandscape]}>
+            {
+              !isRunning && secondsLeft === totalSeconds && (
+                <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={startTimer}>
+                  <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Start</Text>
+                </TouchableOpacity>
+              )
+            }
+            {
+              !isRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
+                <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={startTimer}>
+                  <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Resume</Text>
+                </TouchableOpacity>
+              )
+            }
+            {
+              isRunning && (
+                <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={pauseTimer}>
+                  <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Pause</Text>
+                </TouchableOpacity>
+              )
+            }
+            {
+              !isRunning && secondsLeft !== totalSeconds && (
+                <TouchableOpacity style={[styles.resetButton, isTablet && styles.buttonTablet]} onPress={resetTimer}>
+                  <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Reset</Text>
+                </TouchableOpacity>
+              )
+            }
+          </View>
+
+          <View style={[styles.settingsContainer, isTablet && styles.settingsContainerLandscape]}>
+            <View style={[styles.settingRow]}>
+              <Text style={[styles.keepAwakeText, isTablet && styles.keepAwakeTextTablet]}>Keep screen on</Text>
+              <Switch
+                value={keepScreenOn}
+                onValueChange={setKeepScreenOn}
+                trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
+                thumbColor={keepScreenOn ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+            <View style={[styles.settingRow]}>
+              <Text style={[styles.keepAwakeText]}>Chime on finish</Text>
+              <Switch
+                value={alarmSound}
+                onValueChange={setAlarmSound}
+                trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
+                thumbColor={alarmSound ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+          </View>
+        </View>
       </View>
 
       <Modal
@@ -436,58 +551,6 @@ const CircularTimer = () => {
           </View>
         </View>
       </Modal>
-
-      <View style={styles.svgContainer}>
-        <Svg height={250} width={250} viewBox="0 0 220 220">
-          <Circle
-            cx="110"
-            cy="110"
-            r="100"
-            stroke="#f4d2cd"
-            strokeWidth="12"
-            fill="none"
-          />
-          <AnimatedCircle
-            cx="110"
-            cy="110"
-            r="100"
-            stroke={strokeColor as any}
-            strokeWidth="12"
-            strokeDasharray={2 * Math.PI * 100}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            fill="none"
-            rotation="-90"
-            origin="110, 110"
-          />
-        </Svg>
-      </View>
-      <View style={styles.timerTextContainer}>
-        <View style={styles.timerTextRow}>
-          <Text style={styles.timeText}>{formatTime(secondsLeft)}</Text>
-          <TouchableOpacity 
-            onPress={() => {
-              setWasRunningBeforeEdit(isRunning);
-              if (isRunning) {
-                pauseTimer();
-              }
-              setIsEditingDuration(true);
-            }} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="pencil" size={20} color="#402050" />
-          </TouchableOpacity>
-        </View>
-        { 
-          isRunning && <Text style={styles.runningText}>Running...</Text>
-        }
-        {
-          !isRunning && secondsLeft > 0 && <Text style={styles.runningText}>Paused</Text>
-        }
-        {
-          !isRunning && secondsLeft === 0 && <Text style={styles.runningText}>Done! 🎉</Text>
-        }
-      </View>
 
       <Modal
         animationType="fade"
@@ -577,61 +640,6 @@ const CircularTimer = () => {
           </View>
         </View>
       </Modal>
-
-      <View style={styles.buttonContainer}>
-        {
-          !isRunning && secondsLeft === totalSeconds && (
-            <TouchableOpacity style={styles.button} onPress={startTimer}>
-              <Text style={styles.buttonText}>Start</Text>
-            </TouchableOpacity>
-          )
-        }
-        {
-          !isRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
-            <TouchableOpacity style={styles.button} onPress={startTimer}>
-              <Text style={styles.buttonText}>Resume</Text>
-            </TouchableOpacity>
-          )
-        }
-        {
-          isRunning && (
-            <TouchableOpacity style={styles.button} onPress={pauseTimer}>
-              <Text style={styles.buttonText}>Pause</Text>
-            </TouchableOpacity>
-          )
-        }
-        {
-          !isRunning && secondsLeft !== totalSeconds && (
-            <TouchableOpacity style={styles.resetButton} onPress={resetTimer}>
-              <Text style={styles.buttonText}>Reset</Text>
-            </TouchableOpacity>
-          )
-        }
-        {/* DEV ONLY: Jump to 0 */}
-        {/* <TouchableOpacity style={styles.button} onPress={() => setSecondsLeft(0)}>
-          <Text style={styles.buttonText}>Jump to 0</Text>
-        </TouchableOpacity> */}
-      </View>
-
-      <View style={styles.keepAwakeContainer}>
-        <Text style={styles.keepAwakeText}>Keep screen on</Text>
-        <Switch
-          value={keepScreenOn}
-          onValueChange={setKeepScreenOn}
-          trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
-          thumbColor={keepScreenOn ? '#fff' : '#f4f3f4'}
-        />
-      </View>
-
-      <View style={[styles.keepAwakeContainer, { bottom: 80 }]}>
-        <Text style={styles.keepAwakeText}>Chime on finish</Text>
-        <Switch
-          value={alarmSound}
-          onValueChange={setAlarmSound}
-          trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
-          thumbColor={alarmSound ? '#fff' : '#f4f3f4'}
-        />
-      </View>
     </View>
   );
 };
@@ -640,56 +648,56 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    alignItems: 'center',
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
     flex: 1,
+    backgroundColor: DEFAULT_BACKGROUND,
   },
-  containerLandscape: {
-    flexDirection: 'row',
+  mainContent: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
-    flex: 1,
   },
-  svgContainer: {
-    position: 'absolute',
-    top: (Dimensions.get('window').height - 250)/2,
-    left: (Dimensions.get('window').width - 250)/2,
+  mainContentLandscape: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+  },
+  leftSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rightSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  rightSectionLandscape: {
+    marginLeft: 40,
+    marginTop: 0,
+    flex: 1,
   },
   titleContainer: {
-    position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Dimensions.get('window').height/4,
-    marginBottom: 10,
+    marginBottom: 20,
   },
-  titleInput: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#402050',
-    borderBottomWidth: 1,
-    borderBottomColor: '#402050',
-    paddingHorizontal: 5,
-    marginRight: 8,
-  },
-  iconButton: {
-    padding: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#402050',
-    marginBottom: 10,
-  },
-  timerTextContainer: {
-    marginTop: Dimensions.get('window').height/2.2,
-    marginLeft: 10,
+  titleContainerLandscape: {
     position: 'absolute',
+    top: 20,
+    left: 20,
+  },
+  svgContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  svgContainerLandscape: {
+    marginTop: 60,
+  },
+  timerTextContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  timerTextContainerLandscape: {
+    alignItems: 'flex-start',
   },
   timerTextRow: {
     flexDirection: 'row',
@@ -701,10 +709,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2d1436',
   },
+  timeTextTablet: {
+    fontSize: 48,
+  },
   runningText: {
     fontSize: 14,
     color: '#6a4c71',
     marginTop: 4,
+  },
+  runningTextTablet: {
+    fontSize: 18,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 30,
+  },
+  buttonContainerLandscape: {
+    justifyContent: 'flex-start',
   },
   button: {
     backgroundColor: '#f26b5b',
@@ -712,15 +736,43 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
   },
+  buttonTablet: {
+    paddingHorizontal: 50,
+    paddingVertical: 15,
+    borderRadius: 20,
+  },
   buttonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  buttonTextTablet: {
+    fontSize: 20,
   },
   resetButton: {
     backgroundColor: '#f26b5b',
     paddingHorizontal: 40,
     paddingVertical: 12,
     borderRadius: 16,
+  },
+  settingsContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  settingsContainerLandscape: {
+    alignItems: 'flex-start',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 15,
+  },
+  keepAwakeText: {
+    color: '#402050',
+    fontSize: 16,
+  },
+  keepAwakeTextTablet: {
+    fontSize: 18,
   },
   modalOverlay: {
     flex: 1,
@@ -779,15 +831,6 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: '#f26b5b',
   },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: Dimensions.get('window').height/4,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
   durationGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -827,20 +870,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  keepAwakeContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  keepAwakeText: {
-    color: '#402050',
-    fontSize: 16,
   },
   modeButtons: {
     flexDirection: 'row',
@@ -913,6 +942,15 @@ const styles = StyleSheet.create({
   },
   customDurationButton: {
     borderRadius: 15,
+  },
+  iconButton: {
+    padding: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#402050',
+    marginBottom: 10,
   },
 });
 
