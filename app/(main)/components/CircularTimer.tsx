@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as TaskManager from 'expo-task-manager';
@@ -63,6 +64,8 @@ const CircularTimer = () => {
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
   const [showCelebration, setShowCelebration] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const [alarmSound, setAlarmSound] = useState(true);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const gradientAnim = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
@@ -301,6 +304,44 @@ const CircularTimer = () => {
   const inputRange = rainbowColors.map((_, idx) => idx / (rainbowColors.length - 1));
   const strokeColor = secondsLeft === 0 ? gradientAnim.interpolate({ inputRange, outputRange: rainbowColors }) : '#f26b5b';
 
+  // Load and unload sound
+  useEffect(() => {
+    const loadSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../../assets/sounds/chime-alert.mp3')
+        );
+        setSound(sound);
+      } catch (error) {
+        console.error('Error loading sound:', error);
+      }
+    };
+
+    loadSound();
+
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
+
+  // Play sound when timer reaches 0
+  useEffect(() => {
+    const playAlarm = async () => {
+      if (secondsLeft === 0 && alarmSound && sound) {
+        try {
+          await sound.setPositionAsync(0);
+          await sound.playAsync();
+        } catch (error) {
+          console.error('Error playing sound:', error);
+        }
+      }
+    };
+
+    playAlarm();
+  }, [secondsLeft, alarmSound, sound]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <Fireworks isActive={showCelebration} />
@@ -480,6 +521,16 @@ const CircularTimer = () => {
           onValueChange={setKeepScreenOn}
           trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
           thumbColor={keepScreenOn ? '#fff' : '#f4f3f4'}
+        />
+      </View>
+
+      <View style={[styles.keepAwakeContainer, { bottom: 80 }]}>
+        <Text style={styles.keepAwakeText}>Alarm sound</Text>
+        <Switch
+          value={alarmSound}
+          onValueChange={setAlarmSound}
+          trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
+          thumbColor={alarmSound ? '#fff' : '#f4f3f4'}
         />
       </View>
     </View>
