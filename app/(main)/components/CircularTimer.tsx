@@ -496,6 +496,14 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').height,
     flex: 1,
   },
+  containerLandscape: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    flex: 1,
+  },
   svgContainer: {
     position: 'absolute',
     top: (Dimensions.get('window').height - 250)/2,
