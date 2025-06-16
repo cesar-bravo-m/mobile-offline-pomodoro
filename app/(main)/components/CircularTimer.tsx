@@ -5,16 +5,17 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
-const TIMER_INTERVALS = [1, 5, 10, 15, 20, 25, 30, 45, 60];
+const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
 const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
 const DEFAULT_BACKGROUND = '#fdf1ef';
+const BREAK_BACKGROUND = '#e8f5e9';
 
 TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
   try {
@@ -34,6 +35,7 @@ TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
         isRunning: state.isRunning && newSecondsLeft > 0,
         lastUpdated: now,
         totalSeconds: state.totalSeconds,
+        mode: state.mode,
       };
       
       await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(newState));
@@ -50,16 +52,17 @@ interface TimerState {
   isRunning: boolean;
   lastUpdated: number;
   totalSeconds: number;
+  mode: 'focus' | 'break';
 }
 
 const CircularTimer = () => {
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
   const [isRunning, setIsRunning] = useState(true);
-  const [title, setTitle] = useState('Focus');
+  const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingDuration, setIsEditingDuration] = useState(false);
-  const [tempTitle, setTempTitle] = useState(title);
+  const [tempTitle, setTempTitle] = useState('Focus');
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -113,6 +116,7 @@ const CircularTimer = () => {
           setSecondsLeft(newSecondsLeft);
           setIsRunning(state.isRunning && newSecondsLeft > 0);
           setTotalSeconds(state.totalSeconds);
+          setMode(state.mode || 'focus');
           
           const progress = newSecondsLeft / state.totalSeconds;
           animatedValue.setValue(progress);
@@ -134,6 +138,7 @@ const CircularTimer = () => {
           isRunning,
           lastUpdated: Date.now(),
           totalSeconds,
+          mode,
         };
         await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
       } catch (error) {
@@ -142,7 +147,7 @@ const CircularTimer = () => {
     };
 
     saveTimerState();
-  }, [secondsLeft, isRunning, totalSeconds]);
+  }, [secondsLeft, isRunning, totalSeconds, mode]);
 
   // Handle app state changes
   useEffect(() => {
@@ -163,6 +168,7 @@ const CircularTimer = () => {
           setSecondsLeft(newSecondsLeft);
           setIsRunning(state.isRunning && newSecondsLeft > 0);
           setTotalSeconds(state.totalSeconds);
+          setMode(state.mode || 'focus');
           
           const progress = newSecondsLeft / TOTAL_SECONDS;
           animatedValue.setValue(progress);
@@ -270,11 +276,11 @@ const CircularTimer = () => {
       pauseTimer();
     }
     setIsEditing(true);
-    setTempTitle(title);
+    setTempTitle(mode === 'focus' ? 'Focus' : 'Break');
   };
 
   const handleSave = () => {
-    setTitle(tempTitle);
+    setMode(mode === 'focus' ? 'focus' : 'break');
     setIsEditing(false);
     if (wasRunningBeforeEdit) {
       startTimer();
@@ -282,7 +288,7 @@ const CircularTimer = () => {
   };
 
   const handleCancel = () => {
-    setTempTitle(title);
+    setTempTitle(mode === 'focus' ? 'Focus' : 'Break');
     setIsEditing(false);
     if (wasRunningBeforeEdit) {
       startTimer();
@@ -299,12 +305,22 @@ const CircularTimer = () => {
     animatedValue.setValue(0);
   };
 
-  // Default -> Victory red -> Default
+  const handleModeSelect = (selectedMode: 'focus' | 'break') => {
+    setMode(selectedMode);
+    setIsEditing(false);
+    // Reset timer when mode changes
+    setSecondsLeft(totalSeconds);
+    setIsRunning(false);
+    animatedValue.setValue(0);
+    if (wasRunningBeforeEdit) {
+      startTimer();
+    }
+  };
+
   const rainbowColors = ['#f26b5b', '#FF6b5b', '#f26b5b'];
   const inputRange = rainbowColors.map((_, idx) => idx / (rainbowColors.length - 1));
   const strokeColor = secondsLeft === 0 ? gradientAnim.interpolate({ inputRange, outputRange: rainbowColors }) : '#f26b5b';
 
-  // Load and unload sound
   useEffect(() => {
     const loadSound = async () => {
       try {
@@ -342,11 +358,16 @@ const CircularTimer = () => {
     playAlarm();
   }, [secondsLeft, alarmSound, sound]);
 
+  // Update background color when mode changes
+  useEffect(() => {
+    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
+  }, [mode]);
+
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <Fireworks isActive={showCelebration} />
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title}>{mode === 'focus' ? 'Focus' : 'Break'}</Text>
         <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
           <Ionicons name="pencil" size={20} color="#402050" />
         </TouchableOpacity>
@@ -360,21 +381,43 @@ const CircularTimer = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Objective</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={tempTitle}
-              onChangeText={setTempTitle}
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={handleSave} style={[styles.modalButton, styles.saveButton]}>
-                <Ionicons name="checkmark" size={24} color="#fff" />
+            <Text style={styles.modalTitle}>Select Mode</Text>
+            <View style={styles.modeButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  mode === 'focus' && styles.selectedModeButton
+                ]}
+                onPress={() => handleModeSelect('focus')}
+              >
+                <Text style={[
+                  styles.modeButtonText,
+                  mode === 'focus' && styles.selectedModeButtonText
+                ]}>
+                  Focus
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleCancel} style={[styles.modalButton, styles.cancelButton]}>
-                <Ionicons name="close" size={24} color="#fff" />
+              <TouchableOpacity
+                style={[
+                  styles.modeButton,
+                  mode === 'break' && styles.selectedModeButton
+                ]}
+                onPress={() => handleModeSelect('break')}
+              >
+                <Text style={[
+                  styles.modeButtonText,
+                  mode === 'break' && styles.selectedModeButtonText
+                ]}>
+                  Break
+                </Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={handleCancel}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -742,6 +785,31 @@ const styles = StyleSheet.create({
   keepAwakeText: {
     color: '#402050',
     fontSize: 16,
+  },
+  modeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 20,
+  },
+  modeButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f4d2cd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedModeButton: {
+    backgroundColor: '#f26b5b',
+  },
+  modeButtonText: {
+    fontSize: 20,
+    color: '#402050',
+    fontWeight: '600',
+  },
+  selectedModeButtonText: {
+    color: '#fff',
   },
 });
 
