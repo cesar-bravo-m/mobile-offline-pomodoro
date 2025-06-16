@@ -395,60 +395,61 @@ const CircularTimer = () => {
           </View>
 
           <View style={[styles.svgContainer, isLandscape && styles.svgContainerLandscape]}>
-            <Svg height={timerSize} width={timerSize} viewBox="0 0 220 220">
-              <Circle
-                cx="110"
-                cy="110"
-                r="100"
-                stroke="#f4d2cd"
-                strokeWidth="12"
-                fill="none"
-              />
-              <AnimatedCircle
-                cx="110"
-                cy="110"
-                r="100"
-                stroke={strokeColor as any}
-                strokeWidth="12"
-                strokeDasharray={2 * Math.PI * 100}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                fill="none"
-                rotation="-90"
-                origin="110, 110"
-              />
-            </Svg>
+            <View style={styles.timerWrapper}>
+              <Svg height={timerSize} width={timerSize} viewBox="0 0 220 220">
+                <Circle
+                  cx="110"
+                  cy="110"
+                  r="100"
+                  stroke="#f4d2cd"
+                  strokeWidth="12"
+                  fill="none"
+                />
+                <AnimatedCircle
+                  cx="110"
+                  cy="110"
+                  r="100"
+                  stroke={strokeColor as any}
+                  strokeWidth="12"
+                  strokeDasharray={2 * Math.PI * 100}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  fill="none"
+                  rotation="-90"
+                  origin="110, 110"
+                />
+              </Svg>
+              <View style={styles.timerTextOverlay}>
+                <View style={styles.timerTextRow}>
+                  <Text style={[styles.timeText, isTablet && styles.timeTextTablet]}>{formatTime(secondsLeft)}</Text>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setWasRunningBeforeEdit(isRunning);
+                      if (isRunning) {
+                        pauseTimer();
+                      }
+                      setIsEditingDuration(true);
+                    }} 
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name="pencil" size={20} color="#402050" />
+                  </TouchableOpacity>
+                </View>
+                { 
+                  isRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
+                }
+                {
+                  !isRunning && secondsLeft > 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Paused</Text>
+                }
+                {
+                  !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
+                }
+              </View>
+            </View>
           </View>
         </View>
 
         <View style={[styles.rightSection, isLandscape && styles.rightSectionLandscape]}>
-          <View style={[styles.timerTextContainer, isLandscape && styles.timerTextContainerLandscape]}>
-            <View style={styles.timerTextRow}>
-              <Text style={[styles.timeText, isTablet && styles.timeTextTablet]}>{formatTime(secondsLeft)}</Text>
-              <TouchableOpacity 
-                onPress={() => {
-                  setWasRunningBeforeEdit(isRunning);
-                  if (isRunning) {
-                    pauseTimer();
-                  }
-                  setIsEditingDuration(true);
-                }} 
-                style={styles.iconButton}
-              >
-                <Ionicons name="pencil" size={20} color="#402050" />
-              </TouchableOpacity>
-            </View>
-            { 
-              isRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
-            }
-            {
-              !isRunning && secondsLeft > 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Paused</Text>
-            }
-            {
-              !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
-            }
-          </View>
-
           <View style={[styles.buttonContainer, isLandscape && styles.buttonContainerLandscape]}>
             {
               !isRunning && secondsLeft === totalSeconds && (
@@ -467,7 +468,7 @@ const CircularTimer = () => {
             {
               isRunning && (
                 <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={pauseTimer}>
-                  <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Pause</Text>
+                  <Text style={[styles.buttonText]}>Pause</Text>
                 </TouchableOpacity>
               )
             }
@@ -491,7 +492,7 @@ const CircularTimer = () => {
               />
             </View>
             <View style={[styles.settingRow]}>
-              <Text style={[styles.keepAwakeText]}>Chime on finish</Text>
+              <Text style={[styles.keepAwakeText, isTablet && styles.keepAwakeTextTablet]}>Chime on finish</Text>
               <Switch
                 value={alarmSound}
                 onValueChange={setAlarmSound}
@@ -691,13 +692,19 @@ const styles = StyleSheet.create({
   svgContainerLandscape: {
     marginTop: 60,
   },
-  timerTextContainer: {
+  timerWrapper: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 30,
   },
-  timerTextContainerLandscape: {
-    alignItems: 'flex-start',
+  timerTextOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   timerTextRow: {
     flexDirection: 'row',
@@ -708,6 +715,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#2d1436',
+    textAlign: 'center',
   },
   timeTextTablet: {
     fontSize: 48,
@@ -716,6 +724,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6a4c71',
     marginTop: 4,
+    textAlign: 'center',
   },
   runningTextTablet: {
     fontSize: 18,
@@ -729,6 +738,8 @@ const styles = StyleSheet.create({
   },
   buttonContainerLandscape: {
     justifyContent: 'flex-start',
+    marginLeft: 0,
+    marginRight: 30,
   },
   button: {
     backgroundColor: '#f26b5b',
@@ -737,7 +748,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   buttonTablet: {
-    paddingHorizontal: 50,
+    paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 20,
   },
@@ -760,6 +771,7 @@ const styles = StyleSheet.create({
   },
   settingsContainerLandscape: {
     alignItems: 'flex-start',
+    marginRight: 20,
   },
   settingRow: {
     flexDirection: 'row',
