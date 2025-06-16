@@ -5,11 +5,11 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as TaskManager from 'expo-task-manager';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Dimensions, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
-const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45, 60];
+const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const TIMER_STATE_KEY = '@timer_state';
@@ -66,12 +66,18 @@ const CircularTimer = () => {
   const [wasRunningBeforeEdit, setWasRunningBeforeEdit] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(DEFAULT_BACKGROUND);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(true);
   const [alarmSound, setAlarmSound] = useState(true);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const gradientAnim = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<number | null>(null);
+  const [customMinutes, setCustomMinutes] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  useEffect(() => {
+    activateKeepAwake();
+  }, [])
 
   useEffect(() => {
     if (keepScreenOn) {
@@ -301,8 +307,17 @@ const CircularTimer = () => {
     setSecondsLeft(newTotalSeconds);
     setIsEditingDuration(false);
     setIsRunning(false);
-    setBackgroundColor(DEFAULT_BACKGROUND);
+    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
     animatedValue.setValue(0);
+    setShowCustomInput(false);
+    setCustomMinutes('');
+  };
+
+  const handleCustomDuration = () => {
+    const minutes = parseInt(customMinutes);
+    if (minutes >= 1 && minutes <= 120) {
+      handleDurationSelect(minutes);
+    }
   };
 
   const handleModeSelect = (selectedMode: 'focus' | 'break') => {
@@ -480,6 +495,8 @@ const CircularTimer = () => {
         visible={isEditingDuration}
         onRequestClose={() => {
           setIsEditingDuration(false);
+          setShowCustomInput(false);
+          setCustomMinutes('');
           if (wasRunningBeforeEdit) {
             startTimer();
           }
@@ -488,36 +505,75 @@ const CircularTimer = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Duration</Text>
-            <View style={styles.durationGrid}>
-              {TIMER_INTERVALS.map((minutes) => (
-                <TouchableOpacity
-                  key={minutes}
-                  style={[
-                    styles.durationButton,
-                    minutes === totalSeconds / 60 && styles.selectedDurationButton
-                  ]}
-                  onPress={() => handleDurationSelect(minutes)}
+            {!showCustomInput ? (
+              <>
+                <View style={styles.durationGrid}>
+                  {TIMER_INTERVALS.map((minutes) => (
+                    <TouchableOpacity
+                      key={minutes}
+                      style={[
+                        styles.durationButton,
+                        minutes === totalSeconds / 60 && styles.selectedDurationButton
+                      ]}
+                      onPress={() => handleDurationSelect(minutes)}
+                    >
+                      <Text style={[
+                        styles.durationButtonText,
+                        minutes === totalSeconds / 60 && styles.selectedDurationButtonText
+                      ]}>
+                        {minutes}m
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.durationButton, styles.customDurationButton]}
+                    onPress={() => setShowCustomInput(true)}
+                  >
+                    <Text style={styles.durationButtonText}>Custom</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setIsEditingDuration(false);
+                    if (wasRunningBeforeEdit) {
+                      startTimer();
+                    }
+                  }}
                 >
-                  <Text style={[
-                    styles.durationButtonText,
-                    minutes === totalSeconds / 60 && styles.selectedDurationButtonText
-                  ]}>
-                    {minutes}m
-                  </Text>
+                  <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => {
-                setIsEditingDuration(false);
-                if (wasRunningBeforeEdit) {
-                  startTimer();
-                }
-              }}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.customInputContainer}>
+                <Text style={styles.customInputLabel}>Enter minutes (1-120)</Text>
+                <TextInput
+                  style={styles.customInput}
+                  value={customMinutes}
+                  onChangeText={setCustomMinutes}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  autoFocus
+                />
+                <View style={styles.customInputButtons}>
+                  <TouchableOpacity 
+                    style={[styles.customInputButton, styles.cancelCustomButton]}
+                    onPress={() => {
+                      setShowCustomInput(false);
+                      setCustomMinutes('');
+                    }}
+                  >
+                    <Text style={styles.customInputButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.customInputButton, styles.confirmCustomButton]}
+                    onPress={handleCustomDuration}
+                  >
+                    <Text style={styles.customInputButtonText}>Confirm</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -568,7 +624,7 @@ const CircularTimer = () => {
       </View>
 
       <View style={[styles.keepAwakeContainer, { bottom: 80 }]}>
-        <Text style={styles.keepAwakeText}>Alarm sound</Text>
+        <Text style={styles.keepAwakeText}>Chime on finish</Text>
         <Switch
           value={alarmSound}
           onValueChange={setAlarmSound}
@@ -810,6 +866,53 @@ const styles = StyleSheet.create({
   },
   selectedModeButtonText: {
     color: '#fff',
+  },
+  customInputContainer: {
+    width: '100%',
+    alignItems: 'center',
+    padding: 20,
+  },
+  customInputLabel: {
+    fontSize: 16,
+    color: '#402050',
+    marginBottom: 10,
+  },
+  customInput: {
+    fontSize: 24,
+    color: '#402050',
+    borderBottomWidth: 1,
+    borderBottomColor: '#402050',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    width: '100%',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  customInputButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 10,
+  },
+  customInputButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelCustomButton: {
+    backgroundColor: '#f26b5b',
+  },
+  confirmCustomButton: {
+    backgroundColor: '#f26b5b',
+  },
+  customInputButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  customDurationButton: {
+    borderRadius: 15,
   },
 });
 
