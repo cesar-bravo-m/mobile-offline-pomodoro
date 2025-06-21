@@ -1,23 +1,29 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
-import { Dimensions, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
 import Main from './(main)/index';
 import Badges from './Badges';
-import { GamificationProvider, GamificationContext } from '@/contexts/GamificationContext';
 
 export default function RootLayout() {
-  NavigationBar.setButtonStyleAsync('dark');
-  NavigationBar.setBackgroundColorAsync('#fdf1ef');
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   const [tab, setTab] = useState<'timer' | 'badges'>('timer');
+  const insets = useSafeAreaInsets();
+
+  // Set Android navigation bar buttons to dark
+  useEffect(() => {
+    NavigationBar.setButtonStyleAsync('dark');
+    NavigationBar.setBackgroundColorAsync('#402050');
+  }, []);
 
   if (!loaded) {
     return null;
@@ -25,7 +31,7 @@ export default function RootLayout() {
 
   return (
     <GamificationProvider>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Header />
         {tab === 'timer' ? <Main /> : <Badges />}
         <View style={styles.tabBar}>
@@ -60,10 +66,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
-    height: Dimensions.get('window').height,
+    backgroundColor: '#fdf1ef',
   },
   header: {
-    paddingTop: 40,
+    paddingTop: 10,
     paddingBottom: 10,
   },
   headerText: {
