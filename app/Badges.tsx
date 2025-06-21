@@ -1,9 +1,8 @@
 import { GamificationContext } from '@/contexts/GamificationContext';
+import { ALL_BADGES } from '@/constants/badges';
 import * as NavigationBar from 'expo-navigation-bar';
 import React, { useContext, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-
-const ALL_BADGES = ['First Pomodoro', 'Pomodoro Novice', 'Pomodoro Pro'];
 
 export default function Badges() {
   const { badges } = useContext(GamificationContext);

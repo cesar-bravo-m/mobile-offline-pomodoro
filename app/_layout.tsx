@@ -33,7 +33,14 @@ export default function RootLayout() {
     <GamificationProvider>
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Header />
-        {tab === 'timer' ? <Main /> : <Badges />}
+        <View style={{ flex: 1 }}>
+          <View style={{ display: tab === 'timer' ? 'flex' : 'none', flex: 1 }}>
+            <Main />
+          </View>
+          <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
+            <Badges />
+          </View>
+        </View>
         <View style={styles.tabBar}>
           <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
             <Ionicons name="timer" size={24} color={tab === 'timer' ? '#f26b5b' : '#402050'} />

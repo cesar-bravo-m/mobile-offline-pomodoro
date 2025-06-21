@@ -37,7 +37,7 @@ const CircularTimer = () => {
   const intervalRef = useRef<number | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const { completePomodoro } = useContext(GamificationContext);
+  const { completeSession } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
 
   useEffect(() => {
@@ -59,8 +59,8 @@ const CircularTimer = () => {
 
   useEffect(() => {
     if (secondsLeft === 0) {
-      if (!rewardGiven.current && mode === 'focus') {
-        completePomodoro();
+      if (!rewardGiven.current) {
+        completeSession(mode, totalSeconds);
         rewardGiven.current = true;
       }
       setShowCelebration(true);
