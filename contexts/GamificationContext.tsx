@@ -29,6 +29,7 @@ interface GamificationContextType extends GamificationState {
   resetProgress: () => void;
   startTimer: (mode: 'focus' | 'break', duration: number) => void;
   stopTimer: () => void;
+  resumeTimer: () => void;
   getRemainingTime: () => number | null;
   setDisplayMode: (mode: 'focus' | 'break' | null) => void;
 }
@@ -54,6 +55,7 @@ export const GamificationContext = createContext<GamificationContextType>({
   resetProgress: () => {},
   startTimer: () => {},
   stopTimer: () => {},
+  resumeTimer: () => {},
   getRemainingTime: () => null,
   setDisplayMode: () => {},
 });
@@ -103,10 +105,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
         clearInterval(timerInterval.current);
         timerInterval.current = null;
       }
-      setState(prev => ({
-        ...prev,
-        remainingTime: null,
-      }));
+      // Do NOT clear remainingTime here so the timer can be resumed
     }
   }, [state.isTimerRunning, state.currentSessionStartTime, state.currentSessionDuration, state.currentSessionMode]);
 
@@ -149,6 +148,16 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     }));
   }, []);
 
+  const resumeTimer = useCallback(() => {
+    if (state.remainingTime !== null) {
+      setState(prev => ({
+        ...prev,
+        isTimerRunning: true,
+        currentSessionStartTime: Date.now() - ((prev.currentSessionDuration! - prev.remainingTime!) * 1000),
+      }));
+    }
+  }, [state.remainingTime, state.currentSessionDuration]);
+
   const stopTimer = useCallback(() => {
     if (timerInterval.current) {
       clearInterval(timerInterval.current);
@@ -157,10 +166,9 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     setState(prev => ({
       ...prev,
       isTimerRunning: false,
-      currentSessionMode: null,
       currentSessionStartTime: null,
-      currentSessionDuration: null,
-      remainingTime: null,
+      // Don't clear currentSessionMode, currentSessionDuration, or remainingTime
+      // so the timer can be resumed
     }));
   }, []);
 
@@ -299,6 +307,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       resetProgress, 
       startTimer, 
       stopTimer,
+      resumeTimer,
       getRemainingTime,
       setDisplayMode
     }}>

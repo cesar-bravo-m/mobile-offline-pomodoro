@@ -13,7 +13,7 @@ const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const DEFAULT_BACKGROUND = '#fdf1ef';
-const BREAK_BACKGROUND = '#e8f5e9';
+const BREAK_BACKGROUND = '#fdf1ef';
 
 const CircularTimer = () => {
   const { width, height } = useWindowDimensions();
@@ -42,6 +42,7 @@ const CircularTimer = () => {
     remainingTime,
     startTimer: startContextTimer,
     stopTimer: stopContextTimer,
+    resumeTimer: resumeContextTimer,
     setDisplayMode
   } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
@@ -150,6 +151,13 @@ const CircularTimer = () => {
     }
   };
 
+  const resumeTimer = () => {
+    resumeContextTimer();
+    if (secondsLeft === totalSeconds) {
+      animatedValue.setValue(0);
+    }
+  };
+
   const handleEdit = () => {
     setWasRunningBeforeEdit(isTimerRunning);
     if (isTimerRunning) {
@@ -157,14 +165,6 @@ const CircularTimer = () => {
     }
     setIsEditing(true);
     setTempTitle(mode === 'focus' ? 'Focus' : 'Break');
-  };
-
-  const handleSave = () => {
-    setMode(tempTitle === 'Focus' ? 'focus' : 'break');
-    setIsEditing(false);
-    if (wasRunningBeforeEdit) {
-      startTimer();
-    }
   };
 
   const handleCancel = () => {
@@ -264,9 +264,13 @@ const CircularTimer = () => {
         <View style={styles.leftSection}>
           <View style={[styles.titleContainer, isLandscape && styles.titleContainerLandscape]}>
             <Text style={styles.title}>{mode === 'focus' ? 'Focus' : 'Break'}</Text>
-            <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
-              <Ionicons name="pencil" size={20} color="#402050" />
-            </TouchableOpacity>
+            {
+              !isTimerRunning && (
+                <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
+                  <Ionicons name="pencil" size={20} color="#402050" />
+                </TouchableOpacity>
+              )
+            }
           </View>
 
           <View style={[styles.svgContainer, isLandscape && styles.svgContainerLandscape]}>
@@ -297,18 +301,22 @@ const CircularTimer = () => {
               <View style={styles.timerTextOverlay}>
                 <View style={styles.timerTextRow}>
                   <Text style={[styles.timeText, isTablet && styles.timeTextTablet]}>{formatTime(secondsLeft)}</Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setWasRunningBeforeEdit(isTimerRunning);
-                      if (isTimerRunning) {
-                        pauseTimer();
-                      }
-                      setIsEditingDuration(true);
-                    }} 
-                    style={styles.iconButton}
-                  >
-                    <Ionicons name="pencil" size={20} color="#402050" />
-                  </TouchableOpacity>
+                  {
+                    !isTimerRunning && (
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setWasRunningBeforeEdit(isTimerRunning);
+                          if (isTimerRunning) {
+                            pauseTimer();
+                          }
+                          setIsEditingDuration(true);
+                        }} 
+                        style={styles.iconButton}
+                      >
+                        <Ionicons name="pencil" size={20} color="#402050" />
+                      </TouchableOpacity>
+                    )
+                  }
                 </View>
                 { 
                   isTimerRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
@@ -343,7 +351,7 @@ const CircularTimer = () => {
             }
             {
               !isTimerRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
-                <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={startTimer}>
+                <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={resumeTimer}>
                   <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Resume</Text>
                 </TouchableOpacity>
               )
