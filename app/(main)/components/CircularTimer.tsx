@@ -317,14 +317,14 @@ const CircularTimer = () => {
                   !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
                 }
               </View>
-                  <TouchableOpacity 
+                  {/* <TouchableOpacity 
                     onPress={() => {
                       showNotification('You\'ve earned a badge!', 'First pomodoro');
-                      showNotification('TEST NOTIFICATION', 'This is a test notification');
+                      showNotification('TEST 2', 'First pomodoro');
                     }} 
                   >
                     <Text>Test</Text>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
             </View>
           </View>
         </View>

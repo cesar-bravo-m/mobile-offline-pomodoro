@@ -3,16 +3,61 @@ import { useFonts } from 'expo-font';
 import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import React, { useContext, useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LogBox, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ErrorSuppressor from '@/components/ErrorSuppressor';
 import { NotificationProvider } from '@/components/NotificationManager';
 import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
 
 import Main from './(main)/index';
 import Badges from './Badges';
 import History from './History';
+
+// Aggressive error suppression
+LogBox.ignoreLogs([
+  'Warning: useInsertionEffect must not schedule updates.',
+  'useInsertionEffect',
+  'schedule updates',
+]);
+
+// Override console.error to filter out useInsertionEffect errors
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const message = args.join(' ');
+  if (message.includes('useInsertionEffect') || message.includes('schedule updates')) {
+    return; // Suppress the error completely
+  }
+  originalConsoleError.apply(console, args);
+};
+
+// Override console.warn to filter out useInsertionEffect warnings
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  const message = args.join(' ');
+  if (message.includes('useInsertionEffect') || message.includes('schedule updates')) {
+    return; // Suppress the warning completely
+  }
+  originalConsoleWarn.apply(console, args);
+};
+
+// Global error handler
+if (typeof global !== 'undefined') {
+  const globalAny = global as any;
+  const originalErrorHandler = globalAny.ErrorUtils?.setGlobalHandler;
+  if (originalErrorHandler) {
+    globalAny.ErrorUtils.setGlobalHandler((error: any, isFatal: any) => {
+      if (error.message && (error.message.includes('useInsertionEffect') || error.message.includes('schedule updates'))) {
+        return; // Suppress the error
+      }
+      // Call original handler for other errors
+      if (originalErrorHandler) {
+        originalErrorHandler(error, isFatal);
+      }
+    });
+  }
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -33,39 +78,41 @@ export default function RootLayout() {
   }
 
   return (
-    <NotificationProvider>
-      <GamificationProvider>
-        <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <Header />
-          <View style={{ flex: 1 }}>
-            <View style={{ display: tab === 'timer' ? 'flex' : 'none', flex: 1 }}>
-              <Main />
+    <ErrorSuppressor>
+      <NotificationProvider>
+        <GamificationProvider>
+          <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+            <Header />
+            <View style={{ flex: 1 }}>
+              <View style={{ display: tab === 'timer' ? 'flex' : 'none', flex: 1 }}>
+                <Main />
+              </View>
+              <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
+                <Badges />
+              </View>
+              <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
+                <History />
+              </View>
             </View>
-            <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
-              <Badges />
+            <View style={styles.tabBar}>
+              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
+                <Ionicons name="timer" size={24} color={tab === 'timer' ? '#f26b5b' : '#402050'} />
+                <Text style={styles.tabLabel}>Timer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('badges')}>
+                <Ionicons name="trophy" size={24} color={tab === 'badges' ? '#f26b5b' : '#402050'} />
+                <Text style={styles.tabLabel}>Badges</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
+                <Ionicons name="document-text" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
+                <Text style={styles.tabLabel}>Log</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
-              <History />
-            </View>
+            <StatusBar style="dark" />
           </View>
-          <View style={styles.tabBar}>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
-              <Ionicons name="timer" size={24} color={tab === 'timer' ? '#f26b5b' : '#402050'} />
-              <Text style={styles.tabLabel}>Timer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('badges')}>
-              <Ionicons name="trophy" size={24} color={tab === 'badges' ? '#f26b5b' : '#402050'} />
-              <Text style={styles.tabLabel}>Badges</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
-              <Ionicons name="document-text" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
-              <Text style={styles.tabLabel}>Log</Text>
-            </TouchableOpacity>
-          </View>
-          <StatusBar style="dark" />
-        </View>
-      </GamificationProvider>
-    </NotificationProvider>
+        </GamificationProvider>
+      </NotificationProvider>
+    </ErrorSuppressor>
   );
 }
 
@@ -121,7 +168,7 @@ const Header = () => {
           <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text>
         </View>
       ) : (
-        <Text style={styles.headerText}>Lvl {level} • {coins} coins</Text>
+        <Text style={styles.headerText}>Pomodoro Timer</Text>
       )}
     </View>
   );

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import ErrorBoundary from './ErrorBoundary';
 import Notification from './Notification';
 
 interface NotificationData {
@@ -60,18 +61,19 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         const isTop = visibleIndex === visibleNotifications.length - 1;
         
         return (
-          <Notification
-            key={notification.id}
-            visible={notification.isVisible}
-            title={notification.title}
-            message={notification.message}
-            type={notification.type}
-            onHide={() => hideNotification(notification.id)}
-            onVisibilityChange={(isVisible) => markNotificationVisible(notification.id, isVisible)}
-            isTop={isTop}
-            stackIndex={visibleIndex}
-            totalCount={visibleNotifications.length}
-          />
+          <ErrorBoundary key={notification.id}>
+            <Notification
+              visible={notification.isVisible}
+              title={notification.title}
+              message={notification.message}
+              type={notification.type}
+              onHide={() => hideNotification(notification.id)}
+              onVisibilityChange={(isVisible) => markNotificationVisible(notification.id, isVisible)}
+              isTop={isTop}
+              stackIndex={visibleIndex}
+              totalCount={visibleNotifications.length}
+            />
+          </ErrorBoundary>
         );
       })}
     </NotificationContext.Provider>

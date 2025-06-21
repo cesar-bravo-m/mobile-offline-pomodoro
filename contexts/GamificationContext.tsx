@@ -196,8 +196,8 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     const sessionType = mode === 'focus' ? 'Focus' : 'Break';
     const durationMinutes = Math.floor(duration / 60);
     showNotification(
-      `${sessionType} Session Complete!`,
-      `Great job! You completed a ${durationMinutes}-minute ${sessionType.toLowerCase()} session.`
+      `${sessionType} Great job!`,
+      `You completed a ${durationMinutes}-minute ${sessionType.toLowerCase()} session.`
     );
 
     // Show badge notifications

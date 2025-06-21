@@ -1,9 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GestureHandlerRootView, LongPressGestureHandler, PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
-
-
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface NotificationProps {
   visible: boolean;
@@ -31,15 +28,119 @@ const Notification: React.FC<NotificationProps> = ({
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const pan = useRef(new Animated.Value(0)).current;
-  const progressWidth = useRef(new Animated.Value(100)).current;
+  const progress = useRef(new Animated.Value(100)).current;
   const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState(100);
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [currentProgress, setCurrentProgress] = useState(100);
+  const progressAnimation = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Memoize colors to prevent unnecessary recalculations
+  const colors = useMemo(() => {
+    const getColor = () => {
+      switch (type) {
+        case 'success': return '#4CAF50';
+        case 'warning': return '#FF9800';
+        case 'info': return '#2196F3';
+        default: return '#4CAF50';
+      }
+    };
+
+    const getBackgroundColor = () => {
+      switch (type) {
+        case 'success': return '#E8F5E8';
+        case 'warning': return '#FFF3E0';
+        case 'info': return '#E3F2FD';
+        default: return '#E8F5E8';
+      }
+    };
+
+    return {
+      color: getColor(),
+      backgroundColor: getBackgroundColor(),
+    };
+  }, [type]);
+
+  // Memoize icon to prevent unnecessary recalculations
+  const iconName = useMemo(() => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'warning': return 'warning';
+      case 'info': return 'information-circle';
+      default: return 'checkmark-circle';
+    }
+  }, [type]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => isTop,
+      onMoveShouldSetPanResponder: () => isTop,
+      onPanResponderGrant: () => {
+        pan.setValue(0);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (isTop) {
+          pan.setValue(gestureState.dx);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > 100) {
+          hideNotification();
+        } else {
+          Animated.spring(pan, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  const startProgressAnimation = useCallback(() => {
+    if (progressAnimation.current) {
+      progressAnimation.current.stop();
+    }
+    
+    setCurrentProgress(100);
+    progress.setValue(100);
+    progressAnimation.current = Animated.timing(progress, {
+      toValue: 0,
+      duration: 8000,
+      useNativeDriver: false,
+    });
+    
+    progressAnimation.current.start(({ finished }) => {
+      if (finished) {
+        hideNotification();
+      }
+    });
+  }, [progress]);
+
+  const pauseProgressAnimation = useCallback(() => {
+    if (progressAnimation.current) {
+      progressAnimation.current.stop();
+    }
+  }, []);
+
+  const resumeProgressAnimation = useCallback(() => {
+    if (!isPaused) {
+      const remainingDuration = (currentProgress / 100) * 1000; // 8 seconds total
+      
+      progressAnimation.current = Animated.timing(progress, {
+        toValue: 0,
+        duration: remainingDuration,
+        useNativeDriver: false,
+      });
+      
+      progressAnimation.current.start(({ finished }) => {
+        if (finished) {
+          hideNotification();
+        }
+      });
+    }
+  }, [isPaused, progress, currentProgress]);
 
   useEffect(() => {
     if (visible) {
       onVisibilityChange(true);
-      setProgress(100);
       setIsPaused(false);
       
       Animated.parallel([
@@ -53,52 +154,44 @@ const Notification: React.FC<NotificationProps> = ({
           duration: 300,
           useNativeDriver: true,
         }),
-        Animated.timing(progressWidth, {
-          toValue: 0,
-          duration: 4000,
-          useNativeDriver: false,
-        }),
       ]).start();
 
-      // Start progress timer
-      startProgressTimer();
+      startProgressAnimation();
 
       return () => {
-        stopProgressTimer();
+        if (progressAnimation.current) {
+          progressAnimation.current.stop();
+        }
       };
     } else {
       hideNotification();
     }
-  }, [visible]);
+  }, [visible, startProgressAnimation]);
 
-  const startProgressTimer = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
+  // Handle pause/resume when isPaused changes
+  useEffect(() => {
+    if (isPaused) {
+      pauseProgressAnimation();
+    } else {
+      resumeProgressAnimation();
     }
+  }, [isPaused, pauseProgressAnimation, resumeProgressAnimation]);
+
+  // Update currentProgress when animation runs
+  useEffect(() => {
+    const listener = progress.addListener(({ value }) => {
+      setCurrentProgress(value);
+    });
     
-    progressInterval.current = setInterval(() => {
-      if (!isPaused) {
-        setProgress(prev => {
-          const newProgress = prev - (100 / 40); // 100% over 4 seconds = 2.5% per 100ms
-          if (newProgress <= 0) {
-            hideNotification();
-            return 0;
-          }
-          return newProgress;
-        });
-      }
-    }, 100);
-  };
+    return () => {
+      progress.removeListener(listener);
+    };
+  }, [progress]);
 
-  const stopProgressTimer = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
+  const hideNotification = useCallback(() => {
+    if (progressAnimation.current) {
+      progressAnimation.current.stop();
     }
-  };
-
-  const hideNotification = () => {
-    stopProgressTimer();
     onVisibilityChange(false);
     Animated.parallel([
       Animated.timing(translateY, {
@@ -114,72 +207,15 @@ const Notification: React.FC<NotificationProps> = ({
     ]).start(() => {
       onHide();
     });
-  };
+  }, [onHide, onVisibilityChange, translateY, opacity]);
 
-  const onGestureEvent = Animated.event(
-    [{ nativeEvent: { translationX: pan } }],
-    { useNativeDriver: true }
-  );
+  const handleLongPress = useCallback(() => {
+    setIsPaused(true);
+  }, []);
 
-  const onHandlerStateChange = (event: PanGestureHandlerGestureEvent) => {
-    if (event.nativeEvent.state === 5) { // END
-      if (Math.abs(event.nativeEvent.translationX) > 100) {
-        hideNotification();
-      } else {
-        Animated.spring(pan, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }
-    }
-  };
-
-  const onLongPressStateChange = (event: any) => {
-    if (event.nativeEvent.state === State.BEGAN) {
-      setIsPaused(true);
-    } else if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
-      setIsPaused(false);
-    }
-  };
-
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return 'checkmark-circle';
-      case 'warning':
-        return 'warning';
-      case 'info':
-        return 'information-circle';
-      default:
-        return 'checkmark-circle';
-    }
-  };
-
-  const getColor = () => {
-    switch (type) {
-      case 'success':
-        return '#4CAF50';
-      case 'warning':
-        return '#FF9800';
-      case 'info':
-        return '#2196F3';
-      default:
-        return '#4CAF50';
-    }
-  };
-
-  const getBackgroundColor = () => {
-    switch (type) {
-      case 'success':
-        return '#E8F5E8';
-      case 'warning':
-        return '#FFF3E0';
-      case 'info':
-        return '#E3F2FD';
-      default:
-        return '#E8F5E8';
-    }
-  };
+  const handleLongPressEnd = useCallback(() => {
+    setIsPaused(false);
+  }, []);
 
   // Calculate position based on stack index
   const topOffset = stackIndex * 80; // 80px per notification
@@ -199,52 +235,50 @@ const Notification: React.FC<NotificationProps> = ({
         },
       ]}
     >
-      <GestureHandlerRootView>
-        <LongPressGestureHandler
-          onHandlerStateChange={onLongPressStateChange}
-          minDurationMs={200}
-        >
-          <View>
-            <PanGestureHandler
-              onGestureEvent={onGestureEvent}
-              onHandlerStateChange={onHandlerStateChange}
-              enabled={isTop}
-            >
-              <Animated.View
-                style={[
-                  styles.notification,
-                  {
-                    backgroundColor: getBackgroundColor(),
-                    borderLeftColor: getColor(),
-                  },
-                ]}
-              >
-                <View style={styles.iconContainer}>
-                  <Ionicons name={getIcon() as any} size={24} color={getColor()} />
-                </View>
-                <View style={styles.content}>
-                  <Text style={styles.title}>{title}</Text>
-                  <Text style={styles.message}>{message}</Text>
-                </View>
-                <TouchableOpacity style={styles.closeButton} onPress={hideNotification}>
-                  <Ionicons name="close" size={20} color="#666" />
-                </TouchableOpacity>
-              </Animated.View>
-            </PanGestureHandler>
-            <View style={styles.progressContainer}>
-              <Animated.View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: `${progress}%`,
-                    backgroundColor: getColor(),
-                  },
-                ]}
-              />
+      <TouchableOpacity
+        onLongPress={handleLongPress}
+        onPressOut={handleLongPressEnd}
+        delayLongPress={200}
+        activeOpacity={1}
+        {...panResponder.panHandlers}
+      >
+        <View>
+          <Animated.View
+            style={[
+              styles.notification,
+              {
+                backgroundColor: colors.backgroundColor,
+                borderLeftColor: colors.color,
+              },
+            ]}
+          >
+            <View style={styles.iconContainer}>
+              <Ionicons name={iconName as any} size={24} color={colors.color} />
             </View>
+            <View style={styles.content}>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.message}>{message}</Text>
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={hideNotification}>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </Animated.View>
+          <View style={styles.progressContainer}>
+            <Animated.View
+              style={[
+                styles.progressBar,
+                {
+                  width: progress.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%'],
+                  }),
+                  backgroundColor: colors.color,
+                },
+              ]}
+            />
           </View>
-        </LongPressGestureHandler>
-      </GestureHandlerRootView>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
