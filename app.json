@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Offline Pomodoro",
-    "slug": "offline-pomodoro",
+    "slug": "pomodoro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
