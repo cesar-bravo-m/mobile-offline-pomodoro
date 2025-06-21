@@ -22,7 +22,7 @@ export default function RootLayout() {
   // Set Android navigation bar buttons to dark
   useEffect(() => {
     NavigationBar.setButtonStyleAsync('dark');
-    NavigationBar.setBackgroundColorAsync('#402050');
+    NavigationBar.setBackgroundColorAsync('#000');
   }, []);
 
   if (!loaded) {

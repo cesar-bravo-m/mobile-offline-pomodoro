@@ -1,14 +1,15 @@
+import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import * as NavigationBar from 'expo-navigation-bar';
 import * as TaskManager from 'expo-task-manager';
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
-import { GamificationContext } from '@/contexts/GamificationContext';
 
 const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
@@ -81,6 +82,11 @@ const CircularTimer = () => {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const { completePomodoro } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
+
+  useEffect(() => {
+    NavigationBar.setButtonStyleAsync('dark');
+    NavigationBar.setBackgroundColorAsync('#000');
+  }, []);
 
   useEffect(() => {
     activateKeepAwake();
