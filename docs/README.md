@@ -1,5 +1,3 @@
-  Privacy Policy - Offline Pomodoro body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; background-color: #f9f9f9; } .container { background-color: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); } h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1.5rem; } h2 { color: #34495e; margin-top: 2rem; margin-bottom: 1rem; } .meta { color: #666; font-size: 0.9rem; margin-bottom: 2rem; } ul { padding-left: 1.5rem; } li { margin-bottom: 0.5rem; } .contact { background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 2rem; } .highlight { background-color: #e8f4f8; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-
 Privacy Policy for Offline Pomodoro
 ===================================
 
