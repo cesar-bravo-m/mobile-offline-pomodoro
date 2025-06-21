@@ -1,17 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ALL_BADGES, Badge } from '@/constants/badges';
+
+export interface EarnedBadge {
+  name: Badge;
+  earnedAt: number;
+}
 import React, { createContext, useEffect, useState } from 'react';
 
 interface SessionEntry {
   timestamp: number;
   mode: 'focus' | 'break';
   duration: number;
+  completed: boolean;
 }
 
 interface GamificationState {
   coins: number;
   level: number;
-  badges: Badge[];
+  badges: EarnedBadge[];
   completedPomodoros: number;
   totalFocusTime: number;
   sessions: SessionEntry[];
@@ -19,6 +25,9 @@ interface GamificationState {
 
 interface GamificationContextType extends GamificationState {
   completeSession: (mode: 'focus' | 'break', duration: number) => void;
+  logSession: (mode: 'focus' | 'break', duration: number, completed: boolean) => void;
+  badgeJustEarned: EarnedBadge | null;
+  acknowledgeBadge: () => void;
 }
 
 const defaultState: GamificationState = {
@@ -33,6 +42,9 @@ const defaultState: GamificationState = {
 export const GamificationContext = createContext<GamificationContextType>({
   ...defaultState,
   completeSession: () => {},
+  logSession: () => {},
+  badgeJustEarned: null,
+  acknowledgeBadge: () => {},
 });
 
 const STORAGE_KEY = 'gamificationState';
@@ -64,9 +76,21 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     );
   }, [state]);
 
+  const logSession = (mode: 'focus' | 'break', duration: number, completed: boolean) => {
+    const timestamp = Date.now();
+    setState((prev) => ({
+      ...prev,
+      sessions: [...prev.sessions, { timestamp, mode, duration, completed }],
+    }));
+  };
+
+  const [badgeJustEarned, setBadgeJustEarned] = useState<EarnedBadge | null>(null);
+
+  const acknowledgeBadge = () => setBadgeJustEarned(null);
+
   const completeSession = async (mode: 'focus' | 'break', duration: number) => {
     const now = new Date();
-    const sessions = [...state.sessions, { timestamp: now.getTime(), mode, duration }];
+    const sessions = [...state.sessions, { timestamp: now.getTime(), mode, duration, completed: true }];
 
     let { coins, completedPomodoros, totalFocusTime, badges } = state;
 
@@ -77,28 +101,36 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     }
 
     // Badge conditions
-    if (completedPomodoros >= 1 && !badges.includes('First pomodoro')) {
-      badges = [...badges, 'First pomodoro'];
+    const addBadge = (name: Badge) => {
+      if (!badges.find((b) => b.name === name)) {
+        const earned = { name, earnedAt: now.getTime() };
+        badges = [...badges, earned];
+        setBadgeJustEarned(earned);
+      }
+    };
+
+    if (completedPomodoros >= 1) {
+      addBadge('First pomodoro');
     }
 
-    if (totalFocusTime >= 3600 && !badges.includes('Hour hero')) {
-      badges = [...badges, 'Hour hero'];
+    if (totalFocusTime >= 3600) {
+      addBadge('Hour hero');
     }
 
     const hour = now.getHours();
-    if (mode === 'focus' && hour < 10 && !badges.includes('Early bird')) {
-      badges = [...badges, 'Early bird'];
+    if (mode === 'focus' && hour < 10) {
+      addBadge('Early bird');
     }
 
-    if (mode === 'focus' && hour >= 22 && !badges.includes('Night owl')) {
-      badges = [...badges, 'Night owl'];
+    if (mode === 'focus' && hour >= 22) {
+      addBadge('Night owl');
     }
 
-    if (mode === 'break' && duration >= 900 && !badges.includes('AFK')) {
-      badges = [...badges, 'AFK'];
+    if (mode === 'break' && duration >= 900) {
+      addBadge('AFK');
     }
 
-    if (!badges.includes('Power hour')) {
+    if (!badges.find((b) => b.name === 'Power hour')) {
       const todayHours = sessions
         .filter(
           (s) =>
@@ -107,14 +139,14 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
         .map((s) => new Date(s.timestamp).getHours());
       const required = [9, 10, 11, 12, 13, 14, 15, 16];
       if (required.every((h) => todayHours.includes(h))) {
-        badges = [...badges, 'Power hour'];
+        addBadge('Power hour');
       }
     }
 
-    if (mode === 'focus' && !badges.includes('Rainy day focuser')) {
+    if (mode === 'focus' && !badges.find((b) => b.name === 'Rainy day focuser')) {
       try {
         if (await isRainy()) {
-          badges = [...badges, 'Rainy day focuser'];
+          addBadge('Rainy day focuser');
         }
       } catch (e) {
         console.log('Weather check failed', e);
@@ -134,7 +166,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
   };
 
   return (
-    <GamificationContext.Provider value={{ ...state, completeSession }}>
+    <GamificationContext.Provider value={{ ...state, completeSession, logSession, badgeJustEarned, acknowledgeBadge }}>
       {children}
     </GamificationContext.Provider>
   );

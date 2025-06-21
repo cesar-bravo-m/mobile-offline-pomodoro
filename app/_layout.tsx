@@ -8,16 +8,27 @@ import 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
+import { Badge } from '@/constants/badges';
 import Main from './(main)/index';
 import Badges from './Badges';
+import History from './History';
+import NotificationBanner from '../components/NotificationBanner';
 
 export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  const [tab, setTab] = useState<'timer' | 'badges'>('timer');
+  const [tab, setTab] = useState<'timer' | 'badges' | 'history'>('timer');
+  const [highlightBadge, setHighlightBadge] = useState<Badge | null>(null);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (highlightBadge) {
+      const t = setTimeout(() => setHighlightBadge(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [highlightBadge]);
 
   // Set Android navigation bar buttons to dark
   useEffect(() => {
@@ -38,7 +49,10 @@ export default function RootLayout() {
             <Main />
           </View>
           <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
-            <Badges />
+            <Badges highlightedBadge={highlightBadge} />
+          </View>
+          <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
+            <History />
           </View>
         </View>
         <View style={styles.tabBar}>
@@ -50,12 +64,42 @@ export default function RootLayout() {
             <Ionicons name="ribbon" size={24} color={tab === 'badges' ? '#f26b5b' : '#402050'} />
             <Text style={styles.tabLabel}>Badges</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
+            <Ionicons name="list" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
+            <Text style={styles.tabLabel}>History</Text>
+          </TouchableOpacity>
         </View>
         <StatusBar style="dark" />
+        <Notification setTab={setTab} setHighlightBadge={setHighlightBadge} />
       </View>
     </GamificationProvider>
   );
 }
+
+const Notification = ({ setTab, setHighlightBadge }: { setTab: (t: 'timer' | 'badges' | 'history') => void; setHighlightBadge: (b: Badge | null) => void }) => {
+  const { badgeJustEarned, acknowledgeBadge } = useContext(GamificationContext);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (badgeJustEarned) {
+      setVisible(true);
+    }
+  }, [badgeJustEarned]);
+
+  if (!badgeJustEarned || !visible) return null;
+
+  return (
+    <NotificationBanner
+      message={`You earned a badge! ${badgeJustEarned.name}`}
+      onPress={() => {
+        setHighlightBadge(badgeJustEarned.name);
+        setTab('badges');
+        setVisible(false);
+        acknowledgeBadge();
+      }}
+    />
+  );
+};
 
 const Header = () => {
   const { coins, level } = useContext(GamificationContext);

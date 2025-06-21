@@ -37,7 +37,8 @@ const CircularTimer = () => {
   const intervalRef = useRef<number | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const { completeSession } = useContext(GamificationContext);
+  const { completeSession, logSession } = useContext(GamificationContext);
+  const [startTime, setStartTime] = useState<number | null>(null);
   const rewardGiven = useRef(false);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ const CircularTimer = () => {
         rewardGiven.current = true;
       }
       setShowCelebration(true);
+      setStartTime(null);
 
       // Reset and start rainbow animation (two cycles)
       gradientAnim.setValue(0);
@@ -137,16 +139,21 @@ const CircularTimer = () => {
   };
 
   const resetTimer = () => {
+    if (startTime && secondsLeft !== totalSeconds && secondsLeft > 0) {
+      logSession(mode, totalSeconds, false);
+    }
     setSecondsLeft(totalSeconds);
     setIsRunning(false);
     setBackgroundColor(DEFAULT_BACKGROUND);
     animatedValue.setValue(0);
+    setStartTime(null);
   };
 
   const startTimer = () => {
     setIsRunning(true);
     if (secondsLeft === totalSeconds) {
       animatedValue.setValue(0);
+      setStartTime(Date.now());
     }
   };
 
