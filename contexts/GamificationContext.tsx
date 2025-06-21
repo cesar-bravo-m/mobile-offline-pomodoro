@@ -1,11 +1,12 @@
 import { useNotification } from '@/components/NotificationManager';
 import { Badge } from '@/constants/badges';
+import { Objective } from '@/constants/objectives';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 interface SessionEntry {
   timestamp: number;
-  mode: 'focus' | 'break';
+  objective: Objective;
   duration: number;
 }
 
@@ -17,21 +18,21 @@ interface GamificationState {
   totalFocusTime: number;
   sessions: SessionEntry[];
   isTimerRunning: boolean;
-  currentSessionMode: 'focus' | 'break' | null;
+  currentSessionObjective: Objective | null;
   currentSessionStartTime: number | null;
   currentSessionDuration: number | null;
   remainingTime: number | null;
-  displayMode: 'focus' | 'break' | null;
+  displayObjective: Objective | null;
 }
 
 interface GamificationContextType extends GamificationState {
-  completeSession: (mode: 'focus' | 'break', duration: number) => void;
+  completeSession: (objective: Objective, duration: number) => void;
   resetProgress: () => void;
-  startTimer: (mode: 'focus' | 'break', duration: number) => void;
+  startTimer: (objective: Objective, duration: number) => void;
   stopTimer: () => void;
   resumeTimer: () => void;
   getRemainingTime: () => number | null;
-  setDisplayMode: (mode: 'focus' | 'break' | null) => void;
+  setDisplayObjective: (objective: Objective | null) => void;
 }
 
 const defaultState: GamificationState = {
@@ -42,11 +43,11 @@ const defaultState: GamificationState = {
   totalFocusTime: 0,
   sessions: [],
   isTimerRunning: false,
-  currentSessionMode: null,
+  currentSessionObjective: null,
   currentSessionStartTime: null,
   currentSessionDuration: null,
   remainingTime: null,
-  displayMode: null,
+  displayObjective: null,
 };
 
 export const GamificationContext = createContext<GamificationContextType>({
@@ -57,7 +58,7 @@ export const GamificationContext = createContext<GamificationContextType>({
   stopTimer: () => {},
   resumeTimer: () => {},
   getRemainingTime: () => null,
-  setDisplayMode: () => {},
+  setDisplayObjective: () => {},
 });
 
 const STORAGE_KEY = 'gamificationState';
@@ -83,7 +84,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
         
         if (remaining <= 0) {
           // Timer completed
-          completeSession(state.currentSessionMode!, state.currentSessionDuration!);
+          completeSession(state.currentSessionObjective!, state.currentSessionDuration!);
         } else {
           // Update remaining time
           setState(prev => ({
@@ -107,7 +108,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       }
       // Do NOT clear remainingTime here so the timer can be resumed
     }
-  }, [state.isTimerRunning, state.currentSessionStartTime, state.currentSessionDuration, state.currentSessionMode]);
+  }, [state.isTimerRunning, state.currentSessionStartTime, state.currentSessionDuration, state.currentSessionObjective]);
 
   useEffect(() => {
     (async () => {
@@ -119,7 +120,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
           setState({
             ...parsedData,
             isTimerRunning: false,
-            currentSessionMode: null,
+            currentSessionObjective: null,
             currentSessionStartTime: null,
             currentSessionDuration: null,
             remainingTime: null,
@@ -137,11 +138,11 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     );
   }, [state]);
 
-  const startTimer = useCallback((mode: 'focus' | 'break', duration: number) => {
+  const startTimer = useCallback((objective: Objective, duration: number) => {
     setState(prev => ({
       ...prev,
       isTimerRunning: true,
-      currentSessionMode: mode,
+      currentSessionObjective: objective,
       currentSessionStartTime: Date.now(),
       currentSessionDuration: duration,
       remainingTime: duration,
@@ -167,7 +168,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       ...prev,
       isTimerRunning: false,
       currentSessionStartTime: null,
-      // Don't clear currentSessionMode, currentSessionDuration, or remainingTime
+      // Don't clear currentSessionObjective, currentSessionDuration, or remainingTime
       // so the timer can be resumed
     }));
   }, []);
@@ -176,7 +177,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     return state.remainingTime;
   }, [state.remainingTime]);
 
-  const completeSession = useCallback(async (mode: 'focus' | 'break', duration: number) => {
+  const completeSession = useCallback(async (objective: Objective, duration: number) => {
     // Stop timer first
     if (timerInterval.current) {
       clearInterval(timerInterval.current);
@@ -184,11 +185,11 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     }
 
     const now = new Date();
-    const sessions = [...state.sessions, { timestamp: now.getTime(), mode, duration }];
+    const sessions = [...state.sessions, { timestamp: now.getTime(), objective, duration }];
 
     let { coins, completedPomodoros, totalFocusTime, badges } = state;
 
-    if (mode === 'focus') {
+    if (objective === 'Focus') {
       completedPomodoros += 1;
       totalFocusTime += duration;
       coins += 10; // 10 coins per focus session
@@ -209,26 +210,21 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     }
 
     const hour = now.getHours();
-    if (mode === 'focus' && hour < 10 && !badges.includes('Early bird')) {
+    if (objective === 'Focus' && hour < 10 && !badges.includes('Early bird')) {
       badges = [...badges, 'Early bird'];
       newBadges.push('Early bird');
     }
 
-    if (mode === 'focus' && hour >= 22 && !badges.includes('Night owl')) {
+    if (objective === 'Focus' && hour >= 22 && !badges.includes('Night owl')) {
       badges = [...badges, 'Night owl'];
       newBadges.push('Night owl');
-    }
-
-    if (mode === 'break' && duration >= 900 && !badges.includes('AFK')) {
-      badges = [...badges, 'AFK'];
-      newBadges.push('AFK');
     }
 
     if (!badges.includes('Power hour')) {
       const todayHours = sessions
         .filter(
           (s) =>
-            s.mode === 'focus' && new Date(s.timestamp).toDateString() === now.toDateString()
+            s.objective === 'Focus' && new Date(s.timestamp).toDateString() === now.toDateString()
         )
         .map((s) => new Date(s.timestamp).getHours());
       const required = [9, 10, 11, 12, 13, 14, 15, 16];
@@ -238,7 +234,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       }
     }
 
-    if (mode === 'focus' && !badges.includes('Rainy day focuser')) {
+    if (objective === 'Focus' && !badges.includes('Rainy day focuser')) {
       try {
         if (await isRainy()) {
           badges = [...badges, 'Rainy day focuser'];
@@ -259,17 +255,17 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       totalFocusTime,
       sessions,
       isTimerRunning: false,
-      currentSessionMode: null,
+      currentSessionObjective: null,
       currentSessionStartTime: null,
       currentSessionDuration: null,
       remainingTime: null,
-      displayMode: state.displayMode, // Preserve display mode
+      displayObjective: state.displayObjective, // Preserve display objective
     };
 
     setState(newState);
 
     // Show notifications
-    const sessionType = mode === 'focus' ? 'Focus' : 'Break';
+    const sessionType = objective;
     const durationMinutes = Math.floor(duration / 60);
     showNotification(
       `${sessionType} Great job!`,
@@ -284,19 +280,19 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
         'success'
       );
     });
-  }, [state.sessions, state.coins, state.completedPomodoros, state.totalFocusTime, state.badges, state.displayMode, showNotification]);
+  }, [state.sessions, state.coins, state.completedPomodoros, state.totalFocusTime, state.badges, state.displayObjective, showNotification]);
 
   const resetProgress = useCallback(() => {
     setState({
       ...defaultState,
-      displayMode: state.displayMode, // Preserve display mode
+      displayObjective: state.displayObjective, // Preserve display objective
     });
-  }, [state.displayMode]);
+  }, [state.displayObjective]);
 
-  const setDisplayMode = useCallback((mode: 'focus' | 'break' | null) => {
+  const setDisplayObjective = useCallback((objective: Objective | null) => {
     setState(prev => ({
       ...prev,
-      displayMode: mode,
+      displayObjective: objective,
     }));
   }, []);
 
@@ -309,7 +305,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       stopTimer,
       resumeTimer,
       getRemainingTime,
-      setDisplayMode
+      setDisplayObjective
     }}>
       {children}
     </GamificationContext.Provider>

@@ -65,8 +65,6 @@ export default function Badges() {
         return 'flash';
       case 'Rainy day focuser':
         return 'rainy';
-      case 'AFK':
-        return 'cafe';
       default:
         return 'trophy';
     }
@@ -90,8 +88,6 @@ export default function Badges() {
         return '#FFD93D';
       case 'Rainy day focuser':
         return '#87CEEB';
-      case 'AFK':
-        return '#8B4513';
       default:
         return '#f26b5b';
     }
@@ -111,8 +107,6 @@ export default function Badges() {
         return 'Complete focus sessions in 8 consecutive hours';
       case 'Rainy day focuser':
         return 'Focus during rainy weather';
-      case 'AFK':
-        return 'Take a break longer than 15 minutes';
       default:
         return 'Achievement unlocked!';
     }
@@ -132,8 +126,6 @@ export default function Badges() {
         return 'Achieve the ultimate productivity feat by completing focus sessions across 8 consecutive hours (9 AM to 5 PM). This represents a full workday of focused effort.';
       case 'Rainy day focuser':
         return 'Maintain your focus even when the weather tries to distract you. This badge celebrates your ability to stay productive regardless of external conditions.';
-      case 'AFK':
-        return 'Take proper breaks by stepping away for more than 15 minutes. This badge encourages healthy work-life balance and prevents burnout.';
       default:
         return 'An achievement that showcases your dedication to productivity and focus.';
     }

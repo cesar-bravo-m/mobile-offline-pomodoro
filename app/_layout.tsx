@@ -117,7 +117,7 @@ export default function RootLayout() {
 }
 
 const Header = () => {
-  const { coins, level, isTimerRunning, displayMode, remainingTime } = useContext(GamificationContext);
+  const { coins, level, isTimerRunning, displayObjective, remainingTime } = useContext(GamificationContext);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -130,13 +130,8 @@ const Header = () => {
       {isTimerRunning && remainingTime !== null ? (
         <View style={styles.timerHeader}>
           <View style={styles.timerInfo}>
-            <Ionicons 
-              name={displayMode === 'focus' ? 'timer' : 'cafe'} 
-              size={16} 
-              color={displayMode === 'focus' ? '#f26b5b' : '#4CAF50'} 
-            />
             <Text style={styles.timerText}>
-              {displayMode === 'focus' ? 'Focus' : 'Break'} • {formatTime(remainingTime)}
+              {displayObjective} • {formatTime(remainingTime)}
             </Text>
           </View>
           <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text>

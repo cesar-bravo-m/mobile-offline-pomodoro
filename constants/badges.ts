@@ -4,8 +4,7 @@ export type Badge =
   | 'Early bird'
   | 'Night owl'
   | 'Power hour'
-  | 'Rainy day focuser'
-  | 'AFK';
+  | 'Rainy day focuser';
 
 export const ALL_BADGES: Badge[] = [
   'First pomodoro',
@@ -14,5 +13,4 @@ export const ALL_BADGES: Badge[] = [
   'Night owl',
   'Power hour',
   'Rainy day focuser',
-  'AFK',
 ];
