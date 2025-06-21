@@ -1,7 +1,7 @@
 import { useNotification } from '@/components/NotificationManager';
 import { Badge } from '@/constants/badges';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 
 interface SessionEntry {
   timestamp: number;
@@ -20,6 +20,8 @@ interface GamificationState {
   currentSessionMode: 'focus' | 'break' | null;
   currentSessionStartTime: number | null;
   currentSessionDuration: number | null;
+  remainingTime: number | null;
+  displayMode: 'focus' | 'break' | null;
 }
 
 interface GamificationContextType extends GamificationState {
@@ -27,6 +29,8 @@ interface GamificationContextType extends GamificationState {
   resetProgress: () => void;
   startTimer: (mode: 'focus' | 'break', duration: number) => void;
   stopTimer: () => void;
+  getRemainingTime: () => number | null;
+  setDisplayMode: (mode: 'focus' | 'break' | null) => void;
 }
 
 const defaultState: GamificationState = {
@@ -40,6 +44,8 @@ const defaultState: GamificationState = {
   currentSessionMode: null,
   currentSessionStartTime: null,
   currentSessionDuration: null,
+  remainingTime: null,
+  displayMode: null,
 };
 
 export const GamificationContext = createContext<GamificationContextType>({
@@ -48,6 +54,8 @@ export const GamificationContext = createContext<GamificationContextType>({
   resetProgress: () => {},
   startTimer: () => {},
   stopTimer: () => {},
+  getRemainingTime: () => null,
+  setDisplayMode: () => {},
 });
 
 const STORAGE_KEY = 'gamificationState';
@@ -60,6 +68,47 @@ const isRainy = async (): Promise<boolean> => {
 export const GamificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<GamificationState>(defaultState);
   const { showNotification } = useNotification();
+  const timerInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Timer management
+  useEffect(() => {
+    if (state.isTimerRunning && state.currentSessionStartTime && state.currentSessionDuration) {
+      // Start timer interval
+      timerInterval.current = setInterval(() => {
+        const now = Date.now();
+        const elapsed = Math.floor((now - state.currentSessionStartTime!) / 1000);
+        const remaining = state.currentSessionDuration! - elapsed;
+        
+        if (remaining <= 0) {
+          // Timer completed
+          completeSession(state.currentSessionMode!, state.currentSessionDuration!);
+        } else {
+          // Update remaining time
+          setState(prev => ({
+            ...prev,
+            remainingTime: remaining,
+          }));
+        }
+      }, 1000);
+
+      return () => {
+        if (timerInterval.current) {
+          clearInterval(timerInterval.current);
+          timerInterval.current = null;
+        }
+      };
+    } else {
+      // Clear timer interval when not running
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+        timerInterval.current = null;
+      }
+      setState(prev => ({
+        ...prev,
+        remainingTime: null,
+      }));
+    }
+  }, [state.isTimerRunning, state.currentSessionStartTime, state.currentSessionDuration, state.currentSessionMode]);
 
   useEffect(() => {
     (async () => {
@@ -74,6 +123,7 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
             currentSessionMode: null,
             currentSessionStartTime: null,
             currentSessionDuration: null,
+            remainingTime: null,
           });
         }
       } catch (e) {
@@ -88,27 +138,43 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     );
   }, [state]);
 
-  const startTimer = (mode: 'focus' | 'break', duration: number) => {
+  const startTimer = useCallback((mode: 'focus' | 'break', duration: number) => {
     setState(prev => ({
       ...prev,
       isTimerRunning: true,
       currentSessionMode: mode,
       currentSessionStartTime: Date.now(),
       currentSessionDuration: duration,
+      remainingTime: duration,
     }));
-  };
+  }, []);
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
+    if (timerInterval.current) {
+      clearInterval(timerInterval.current);
+      timerInterval.current = null;
+    }
     setState(prev => ({
       ...prev,
       isTimerRunning: false,
       currentSessionMode: null,
       currentSessionStartTime: null,
       currentSessionDuration: null,
+      remainingTime: null,
     }));
-  };
+  }, []);
 
-  const completeSession = async (mode: 'focus' | 'break', duration: number) => {
+  const getRemainingTime = useCallback(() => {
+    return state.remainingTime;
+  }, [state.remainingTime]);
+
+  const completeSession = useCallback(async (mode: 'focus' | 'break', duration: number) => {
+    // Stop timer first
+    if (timerInterval.current) {
+      clearInterval(timerInterval.current);
+      timerInterval.current = null;
+    }
+
     const now = new Date();
     const sessions = [...state.sessions, { timestamp: now.getTime(), mode, duration }];
 
@@ -188,6 +254,8 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
       currentSessionMode: null,
       currentSessionStartTime: null,
       currentSessionDuration: null,
+      remainingTime: null,
+      displayMode: state.displayMode, // Preserve display mode
     };
 
     setState(newState);
@@ -201,28 +269,38 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     );
 
     // Show badge notifications
-    newBadges.forEach(badge => {
+    newBadges.forEach((badge) => {
       showNotification(
-        'You\'ve earned a badge!',
-        badge
+        'New Badge Earned!',
+        `Congratulations! You earned the "${badge}" badge.`,
+        'success'
       );
     });
-  };
+  }, [state.sessions, state.coins, state.completedPomodoros, state.totalFocusTime, state.badges, state.displayMode, showNotification]);
 
-  const resetProgress = () => {
-    setState(defaultState);
-    AsyncStorage.removeItem(STORAGE_KEY).catch((e) =>
-      console.log('Failed to clear gamification state', e)
-    );
-  };
+  const resetProgress = useCallback(() => {
+    setState({
+      ...defaultState,
+      displayMode: state.displayMode, // Preserve display mode
+    });
+  }, [state.displayMode]);
+
+  const setDisplayMode = useCallback((mode: 'focus' | 'break' | null) => {
+    setState(prev => ({
+      ...prev,
+      displayMode: mode,
+    }));
+  }, []);
 
   return (
-    <GamificationContext.Provider value={{ 
-      ...state, 
+    <GamificationContext.Provider value={{
+      ...state,
       completeSession, 
       resetProgress, 
       startTimer, 
-      stopTimer
+      stopTimer,
+      getRemainingTime,
+      setDisplayMode
     }}>
       {children}
     </GamificationContext.Provider>

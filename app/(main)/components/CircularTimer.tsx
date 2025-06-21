@@ -22,7 +22,6 @@ const CircularTimer = () => {
   const timerSize = isTablet ? 300 : 250;
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
-  const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingDuration, setIsEditingDuration] = useState(false);
@@ -35,12 +34,25 @@ const CircularTimer = () => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const gradientAnim = useRef(new Animated.Value(0)).current;
-  const intervalRef = useRef<number | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const { completeSession } = useContext(GamificationContext);
+  const { 
+    completeSession, 
+    isTimerRunning, 
+    remainingTime,
+    startTimer: startContextTimer,
+    stopTimer: stopContextTimer,
+    setDisplayMode
+  } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
   const { showNotification } = useNotification();
+
+  // Sync local state with context
+  useEffect(() => {
+    if (isTimerRunning && remainingTime !== null) {
+      setSecondsLeft(remainingTime);
+    }
+  }, [isTimerRunning, remainingTime]);
 
   useEffect(() => {
     NavigationBar.setButtonStyleAsync('dark');
@@ -93,7 +105,7 @@ const CircularTimer = () => {
       setShowCelebration(false);
       gradientAnim.stopAnimation();
     }
-  }, [secondsLeft]);
+  }, [secondsLeft, mode, totalSeconds, completeSession]);
 
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -101,30 +113,17 @@ const CircularTimer = () => {
   });
 
   useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current!);
-            setIsRunning(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
+    if (isTimerRunning) {
       Animated.timing(animatedValue, {
         toValue: 1,
         duration: secondsLeft * 1000,
         useNativeDriver: false,
         easing: Easing.linear,
       }).start();
+    } else {
+      animatedValue.stopAnimation();
     }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRunning, animatedValue, secondsLeft]);
+  }, [isTimerRunning, animatedValue, secondsLeft]);
 
   const formatTime = (sec: number) => {
     const min = Math.floor(sec / 60);
@@ -133,28 +132,27 @@ const CircularTimer = () => {
   };
 
   const pauseTimer = () => {
-    setIsRunning(false);
-    clearInterval(intervalRef.current!);
+    stopContextTimer();
     animatedValue.stopAnimation();
   };
 
   const resetTimer = () => {
     setSecondsLeft(totalSeconds);
-    setIsRunning(false);
-    setBackgroundColor(DEFAULT_BACKGROUND);
+    stopContextTimer();
+    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
     animatedValue.setValue(0);
   };
 
   const startTimer = () => {
-    setIsRunning(true);
+    startContextTimer(mode, totalSeconds);
     if (secondsLeft === totalSeconds) {
       animatedValue.setValue(0);
     }
   };
 
   const handleEdit = () => {
-    setWasRunningBeforeEdit(isRunning);
-    if (isRunning) {
+    setWasRunningBeforeEdit(isTimerRunning);
+    if (isTimerRunning) {
       pauseTimer();
     }
     setIsEditing(true);
@@ -162,7 +160,7 @@ const CircularTimer = () => {
   };
 
   const handleSave = () => {
-    setMode(mode === 'focus' ? 'focus' : 'break');
+    setMode(tempTitle === 'Focus' ? 'focus' : 'break');
     setIsEditing(false);
     if (wasRunningBeforeEdit) {
       startTimer();
@@ -182,7 +180,7 @@ const CircularTimer = () => {
     setTotalSeconds(newTotalSeconds);
     setSecondsLeft(newTotalSeconds);
     setIsEditingDuration(false);
-    setIsRunning(false);
+    stopContextTimer();
     setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
     animatedValue.setValue(0);
     setShowCustomInput(false);
@@ -201,7 +199,7 @@ const CircularTimer = () => {
     setIsEditing(false);
     // Reset timer when mode changes
     setSecondsLeft(totalSeconds);
-    setIsRunning(false);
+    stopContextTimer();
     animatedValue.setValue(0);
     if (wasRunningBeforeEdit) {
       startTimer();
@@ -254,6 +252,11 @@ const CircularTimer = () => {
     setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
   }, [mode]);
 
+  // Update display mode when local mode changes
+  useEffect(() => {
+    setDisplayMode(mode);
+  }, [mode, setDisplayMode]);
+
   return (
     <View style={[styles.container, { backgroundColor, width: '100%', height: '100%' }]}>
       <Fireworks isActive={showCelebration} />
@@ -296,8 +299,8 @@ const CircularTimer = () => {
                   <Text style={[styles.timeText, isTablet && styles.timeTextTablet]}>{formatTime(secondsLeft)}</Text>
                   <TouchableOpacity 
                     onPress={() => {
-                      setWasRunningBeforeEdit(isRunning);
-                      if (isRunning) {
+                      setWasRunningBeforeEdit(isTimerRunning);
+                      if (isTimerRunning) {
                         pauseTimer();
                       }
                       setIsEditingDuration(true);
@@ -308,13 +311,13 @@ const CircularTimer = () => {
                   </TouchableOpacity>
                 </View>
                 { 
-                  isRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
+                  isTimerRunning && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Running...</Text>
                 }
                 {
-                  !isRunning && secondsLeft > 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Paused</Text>
+                  !isTimerRunning && secondsLeft > 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Paused</Text>
                 }
                 {
-                  !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
+                  !isTimerRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
                 }
               </View>
                   {/* <TouchableOpacity 
@@ -332,28 +335,28 @@ const CircularTimer = () => {
         <View style={[styles.rightSection, isLandscape && styles.rightSectionLandscape]}>
           <View style={[styles.buttonContainer, isLandscape && styles.buttonContainerLandscape]}>
             {
-              !isRunning && secondsLeft === totalSeconds && (
+              !isTimerRunning && secondsLeft === totalSeconds && (
                 <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={startTimer}>
                   <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Start</Text>
                 </TouchableOpacity>
               )
             }
             {
-              !isRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
+              !isTimerRunning && secondsLeft !== totalSeconds && secondsLeft > 0 && (
                 <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={startTimer}>
                   <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Resume</Text>
                 </TouchableOpacity>
               )
             }
             {
-              isRunning && (
+              isTimerRunning && (
                 <TouchableOpacity style={[styles.button, isTablet && styles.buttonTablet]} onPress={pauseTimer}>
                   <Text style={[styles.buttonText]}>Pause</Text>
                 </TouchableOpacity>
               )
             }
             {
-              !isRunning && secondsLeft !== totalSeconds && (
+              !isTimerRunning && secondsLeft !== totalSeconds && (
                 <TouchableOpacity style={[styles.resetButton, isTablet && styles.buttonTablet]} onPress={resetTimer}>
                   <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Reset</Text>
                 </TouchableOpacity>

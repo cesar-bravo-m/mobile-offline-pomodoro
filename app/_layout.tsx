@@ -117,20 +117,7 @@ export default function RootLayout() {
 }
 
 const Header = () => {
-  const { coins, level, isTimerRunning, currentSessionMode, currentSessionStartTime, currentSessionDuration } = useContext(GamificationContext);
-  const [currentTime, setCurrentTime] = useState(Date.now());
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setCurrentTime(Date.now());
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTimerRunning]);
+  const { coins, level, isTimerRunning, displayMode, remainingTime } = useContext(GamificationContext);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -138,31 +125,18 @@ const Header = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const getRemainingTime = () => {
-    if (!isTimerRunning || !currentSessionStartTime || !currentSessionDuration) {
-      return null;
-    }
-    
-    const elapsed = Math.floor((currentTime - currentSessionStartTime) / 1000);
-    const remaining = currentSessionDuration - elapsed;
-    return remaining > 0 ? remaining : 0;
-  };
-
-  const remainingTime = getRemainingTime();
-  const isSessionComplete = remainingTime === 0;
-
   return (
     <View style={styles.header}>
-      {isTimerRunning && !isSessionComplete ? (
+      {isTimerRunning && remainingTime !== null ? (
         <View style={styles.timerHeader}>
           <View style={styles.timerInfo}>
             <Ionicons 
-              name={currentSessionMode === 'focus' ? 'timer' : 'cafe'} 
+              name={displayMode === 'focus' ? 'timer' : 'cafe'} 
               size={16} 
-              color={currentSessionMode === 'focus' ? '#f26b5b' : '#4CAF50'} 
+              color={displayMode === 'focus' ? '#f26b5b' : '#4CAF50'} 
             />
             <Text style={styles.timerText}>
-              {currentSessionMode === 'focus' ? 'Focus' : 'Break'} • {formatTime(remainingTime || 0)}
+              {displayMode === 'focus' ? 'Focus' : 'Break'} • {formatTime(remainingTime)}
             </Text>
           </View>
           <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text>
