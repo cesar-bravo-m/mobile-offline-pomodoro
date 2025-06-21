@@ -3,37 +3,16 @@ import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import React, { useContext, useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Badges() {
-  const { badges, coins, level, resetProgress } = useContext(GamificationContext);
+  const { badges } = useContext(GamificationContext);
   const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
 
   useEffect(() => {
     NavigationBar.setButtonStyleAsync('dark');
     NavigationBar.setBackgroundColorAsync('#000');
   }, []);
-
-  const handleResetProgress = () => {
-    Alert.alert(
-      'Reset Progress',
-      'Are you sure you want to reset all your progress? This will clear all badges, coins, levels, and session history. This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Reset All',
-          style: 'destructive',
-          onPress: () => {
-            resetProgress();
-            Alert.alert('Progress Reset', 'All progress has been reset successfully.');
-          },
-        },
-      ]
-    );
-  };
 
   // Helper function to get badge name (handles both string and object formats)
   const getBadgeName = (badge: any): string => {
@@ -197,15 +176,7 @@ export default function Badges() {
           })}
         </View>
 
-        {/* Reset Button */}
-        <TouchableOpacity
-          style={styles.resetButton}
-          onPress={handleResetProgress}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="refresh" size={20} color="#fff" />
-          <Text style={styles.resetButtonText}>Reset All Progress</Text>
-        </TouchableOpacity>
+        {/* The reset progress button has been moved to the Settings page */}
       </ScrollView>
 
       {/* Badge Detail Modal */}
@@ -349,31 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#402050',
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#dc3545',
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 40,
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,

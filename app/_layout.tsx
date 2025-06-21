@@ -9,12 +9,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ErrorSuppressor from '@/components/ErrorSuppressor';
 import { NotificationProvider } from '@/components/NotificationManager';
-import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
 import { OBJECTIVES } from '@/constants/objectives';
+import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
 
 import Main from './(main)/index';
 import Badges from './Badges';
 import History from './History';
+import Settings from './Settings';
 
 // Aggressive error suppression
 LogBox.ignoreLogs([
@@ -65,7 +66,7 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  const [tab, setTab] = useState<'timer' | 'badges' | 'history'>('timer');
+  const [tab, setTab] = useState<'timer' | 'badges' | 'history' | 'settings'>('timer');
   const insets = useSafeAreaInsets();
 
   // Set Android navigation bar buttons to dark
@@ -94,6 +95,9 @@ export default function RootLayout() {
               <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
                 <History />
               </View>
+              <View style={{ display: tab === 'settings' ? 'flex' : 'none', flex: 1 }}>
+                <Settings />
+              </View>
             </View>
             <View style={styles.tabBar}>
               <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
@@ -107,6 +111,10 @@ export default function RootLayout() {
               <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
                 <Ionicons name="document-text" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
                 <Text style={styles.tabLabel}>Log</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('settings')}>
+                <Ionicons name="settings" size={24} color={tab === 'settings' ? '#f26b5b' : '#402050'} />
+                <Text style={styles.tabLabel}>Settings</Text>
               </TouchableOpacity>
             </View>
             <StatusBar style="dark" />

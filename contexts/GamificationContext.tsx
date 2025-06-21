@@ -27,6 +27,7 @@ interface GamificationState {
 interface GamificationContextType extends GamificationState {
   completeSession: (objective: string, duration: number) => void;
   resetProgress: () => void;
+  clearLogs: () => void;
   startTimer: (objective: string, duration: number) => void;
   stopTimer: () => void;
   resumeTimer: () => void;
@@ -53,6 +54,7 @@ export const GamificationContext = createContext<GamificationContextType>({
   ...defaultState,
   completeSession: () => {},
   resetProgress: () => {},
+  clearLogs: () => {},
   startTimer: () => {},
   stopTimer: () => {},
   resumeTimer: () => {},
@@ -289,11 +291,19 @@ export const GamificationProvider = ({ children }: { children: React.ReactNode }
     }));
   }, []);
 
+  const clearLogs = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      sessions: [],
+    }));
+  }, []);
+
   return (
     <GamificationContext.Provider value={{
       ...state,
       completeSession, 
       resetProgress, 
+      clearLogs,
       startTimer, 
       stopTimer,
       resumeTimer,
