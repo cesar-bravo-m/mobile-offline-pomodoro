@@ -1,11 +1,12 @@
 import { useNotification } from '@/components/NotificationManager';
+import { OBJECTIVES } from '@/constants/objectives';
 import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as NavigationBar from 'expo-navigation-bar';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
@@ -13,7 +14,6 @@ const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
 const DEFAULT_BACKGROUND = '#fdf1ef';
-const BREAK_BACKGROUND = '#fdf1ef';
 
 const CircularTimer = () => {
   const { width, height } = useWindowDimensions();
@@ -22,7 +22,7 @@ const CircularTimer = () => {
   const timerSize = isTablet ? 300 : 250;
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
+  const [objective, setObjective] = useState('Focus');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingDuration, setIsEditingDuration] = useState(false);
   const [tempTitle, setTempTitle] = useState('Focus');
@@ -43,7 +43,7 @@ const CircularTimer = () => {
     startTimer: startContextTimer,
     stopTimer: stopContextTimer,
     resumeTimer: resumeContextTimer,
-    setDisplayMode
+    setDisplayObjective
   } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
   const { showNotification } = useNotification();
@@ -75,7 +75,7 @@ const CircularTimer = () => {
   useEffect(() => {
     if (secondsLeft === 0) {
       if (!rewardGiven.current) {
-        completeSession(mode, totalSeconds);
+        completeSession(objective, totalSeconds);
         rewardGiven.current = true;
       }
       setShowCelebration(true);
@@ -106,7 +106,7 @@ const CircularTimer = () => {
       setShowCelebration(false);
       gradientAnim.stopAnimation();
     }
-  }, [secondsLeft, mode, totalSeconds, completeSession]);
+  }, [secondsLeft, objective, totalSeconds, completeSession]);
 
   const strokeDashoffset = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -140,12 +140,12 @@ const CircularTimer = () => {
   const resetTimer = () => {
     setSecondsLeft(totalSeconds);
     stopContextTimer();
-    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
+    setBackgroundColor(DEFAULT_BACKGROUND);
     animatedValue.setValue(0);
   };
 
   const startTimer = () => {
-    startContextTimer(mode, totalSeconds);
+    startContextTimer(objective, totalSeconds);
     if (secondsLeft === totalSeconds) {
       animatedValue.setValue(0);
     }
@@ -164,11 +164,11 @@ const CircularTimer = () => {
       pauseTimer();
     }
     setIsEditing(true);
-    setTempTitle(mode === 'focus' ? 'Focus' : 'Break');
+    setTempTitle(objective);
   };
 
   const handleCancel = () => {
-    setTempTitle(mode === 'focus' ? 'Focus' : 'Break');
+    setTempTitle(objective);
     setIsEditing(false);
     if (wasRunningBeforeEdit) {
       startTimer();
@@ -181,7 +181,7 @@ const CircularTimer = () => {
     setSecondsLeft(newTotalSeconds);
     setIsEditingDuration(false);
     stopContextTimer();
-    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
+    setBackgroundColor(DEFAULT_BACKGROUND);
     animatedValue.setValue(0);
     setShowCustomInput(false);
     setCustomMinutes('');
@@ -194,10 +194,10 @@ const CircularTimer = () => {
     }
   };
 
-  const handleModeSelect = (selectedMode: 'focus' | 'break') => {
-    setMode(selectedMode);
+  const handleObjectiveSelect = (selected: string) => {
+    setObjective(selected);
     setIsEditing(false);
-    // Reset timer when mode changes
+    // Reset timer when objective changes
     setSecondsLeft(totalSeconds);
     stopContextTimer();
     animatedValue.setValue(0);
@@ -247,15 +247,15 @@ const CircularTimer = () => {
     playAlarm();
   }, [secondsLeft, alarmSound, sound]);
 
-  // Update background color when mode changes
+  // Update background color when objective changes
   useEffect(() => {
-    setBackgroundColor(mode === 'focus' ? DEFAULT_BACKGROUND : BREAK_BACKGROUND);
-  }, [mode]);
+    setBackgroundColor(DEFAULT_BACKGROUND);
+  }, [objective]);
 
-  // Update display mode when local mode changes
+  // Update display objective when local objective changes
   useEffect(() => {
-    setDisplayMode(mode);
-  }, [mode, setDisplayMode]);
+    setDisplayObjective(objective);
+  }, [objective, setDisplayObjective]);
 
   return (
     <View style={[styles.container, { backgroundColor, width: '100%', height: '100%' }]}>
@@ -263,7 +263,7 @@ const CircularTimer = () => {
       <View style={[styles.mainContent, isLandscape && styles.mainContentLandscape]}>
         <View style={styles.leftSection}>
           <View style={[styles.titleContainer, isLandscape && styles.titleContainerLandscape]}>
-            <Text style={styles.title}>{mode === 'focus' ? 'Focus' : 'Break'}</Text>
+            <Text style={styles.title}>{OBJECTIVES.find(o => o.name === objective)?.emoji || '🎯'} {objective}</Text>
             {
               !isTimerRunning && (
                 <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
@@ -403,37 +403,28 @@ const CircularTimer = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Mode</Text>
-            <View style={styles.modeButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.modeButton,
-                  mode === 'focus' && styles.selectedModeButton
-                ]}
-                onPress={() => handleModeSelect('focus')}
-              >
-                <Text style={[
-                  styles.modeButtonText,
-                  mode === 'focus' && styles.selectedModeButtonText
-                ]}>
-                  Focus
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modeButton,
-                  mode === 'break' && styles.selectedModeButton
-                ]}
-                onPress={() => handleModeSelect('break')}
-              >
-                <Text style={[
-                  styles.modeButtonText,
-                  mode === 'break' && styles.selectedModeButtonText
-                ]}>
-                  Break
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.modalTitle}>Select Objective</Text>
+            <ScrollView style={{maxHeight: 300, width: '100%'}} contentContainerStyle={styles.objectiveGrid}>
+              {OBJECTIVES.map(obj => (
+                <TouchableOpacity
+                  key={obj.name}
+                  style={[
+                    styles.objectiveButton,
+                    objective === obj.name && styles.selectedObjectiveButton
+                  ]}
+                  onPress={() => handleObjectiveSelect(obj.name)}
+                >
+                  <Text
+                    style={[
+                      styles.objectiveButtonText,
+                      objective === obj.name && styles.selectedObjectiveButtonText
+                    ]}
+                  >
+                    {obj.emoji} {obj.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <TouchableOpacity 
               style={styles.closeButton}
               onPress={handleCancel}
@@ -854,6 +845,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#402050',
     marginBottom: 10,
+  },
+  objectiveGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  objectiveButton: {
+    margin: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f4d2cd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedObjectiveButton: {
+    backgroundColor: '#f26b5b',
+  },
+  objectiveButtonText: {
+    fontSize: 16,
+    color: '#402050',
+    fontWeight: '600',
+  },
+  selectedObjectiveButtonText: {
+    color: '#fff',
   },
 });
 
