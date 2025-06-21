@@ -1,3 +1,4 @@
+import { useNotification } from '@/components/NotificationManager';
 import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -39,6 +40,7 @@ const CircularTimer = () => {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const { completeSession } = useContext(GamificationContext);
   const rewardGiven = useRef(false);
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     NavigationBar.setButtonStyleAsync('dark');
@@ -315,6 +317,13 @@ const CircularTimer = () => {
                   !isRunning && secondsLeft === 0 && <Text style={[styles.runningText, isTablet && styles.runningTextTablet]}>Done! 🎉</Text>
                 }
               </View>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      showNotification('You\'ve earned a badge!', 'First pomodoro');
+                    }} 
+                  >
+                    <Text>Test</Text>
+                  </TouchableOpacity>
             </View>
           </View>
         </View>
