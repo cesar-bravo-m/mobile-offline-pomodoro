@@ -1,14 +1,14 @@
 import { useNotification } from '@/components/NotificationManager';
+import { OBJECTIVES } from '@/constants/objectives';
 import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as NavigationBar from 'expo-navigation-bar';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
-import { OBJECTIVES } from '@/constants/objectives';
 
 const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
@@ -404,27 +404,27 @@ const CircularTimer = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Objective</Text>
-            <View style={styles.modeButtons}>
+            <ScrollView style={{maxHeight: 300, width: '100%'}} contentContainerStyle={styles.objectiveGrid}>
               {OBJECTIVES.map(obj => (
                 <TouchableOpacity
                   key={obj.name}
                   style={[
-                    styles.modeButton,
-                    objective === obj.name && styles.selectedModeButton
+                    styles.objectiveButton,
+                    objective === obj.name && styles.selectedObjectiveButton
                   ]}
                   onPress={() => handleObjectiveSelect(obj.name)}
                 >
                   <Text
                     style={[
-                      styles.modeButtonText,
-                      objective === obj.name && styles.selectedModeButtonText
+                      styles.objectiveButtonText,
+                      objective === obj.name && styles.selectedObjectiveButtonText
                     ]}
                   >
                     {obj.emoji} {obj.name}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
             <TouchableOpacity 
               style={styles.closeButton}
               onPress={handleCancel}
@@ -845,6 +845,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#402050',
     marginBottom: 10,
+  },
+  objectiveGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  objectiveButton: {
+    margin: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f4d2cd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedObjectiveButton: {
+    backgroundColor: '#f26b5b',
+  },
+  objectiveButtonText: {
+    fontSize: 16,
+    color: '#402050',
+    fontWeight: '600',
+  },
+  selectedObjectiveButtonText: {
+    color: '#fff',
   },
 });
 
