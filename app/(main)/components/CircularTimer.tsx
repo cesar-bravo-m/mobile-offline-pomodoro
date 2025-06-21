@@ -364,7 +364,7 @@ const CircularTimer = () => {
               )
             }
             {
-              !isTimerRunning && secondsLeft !== totalSeconds && (
+              (!isTimerRunning && secondsLeft !== totalSeconds) && (
                 <TouchableOpacity style={[styles.resetButton, isTablet && styles.buttonTablet]} onPress={resetTimer}>
                   <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>Reset</Text>
                 </TouchableOpacity>
@@ -382,7 +382,7 @@ const CircularTimer = () => {
                 thumbColor={keepScreenOn ? '#fff' : '#f4f3f4'}
               />
             </View>
-            <View style={[styles.settingRow]}>
+            {/* <View style={[styles.settingRow]}>
               <Text style={[styles.keepAwakeText, isTablet && styles.keepAwakeTextTablet]}>Chime on finish</Text>
               <Switch
                 value={alarmSound}
@@ -390,7 +390,7 @@ const CircularTimer = () => {
                 trackColor={{ false: '#f4d2cd', true: '#f26b5b' }}
                 thumbColor={alarmSound ? '#fff' : '#f4f3f4'}
               />
-            </View>
+            </View> */}
           </View>
         </View>
       </View>

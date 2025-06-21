@@ -127,6 +127,20 @@ export default function RootLayout() {
 
 const getEmoji = (name: string) => OBJECTIVES.find(o => o.name === name)?.emoji || '🎯';
 
+const EncouraginggMessage = (time: number) => {
+  if (time > 60*60) {
+    return 'Great start!';
+  } else if (time <= 60*60) {
+    return 'Keep going!';
+  } else if (time <= 30*60) {
+    return 'Almost there!';
+  } else if (time <= 10*60) {
+    return 'Keep going!';
+  } else if (time <= 5*60) {
+    return 'Almost done! 🎉';
+  }
+}
+
 const Header = () => {
   const { coins, level, isTimerRunning, displayObjective, remainingTime } = useContext(GamificationContext);
 
@@ -145,7 +159,9 @@ const Header = () => {
               {getEmoji(displayObjective || 'Focus')} {displayObjective || 'Focus'} • {formatTime(remainingTime)}
             </Text>
           </View>
-          <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text>
+          {/* Add encouraging messages that depend on the time left */}
+          <Text style={styles.statsText}>{EncouraginggMessage(remainingTime)}</Text>
+          {/* <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text> */}
         </View>
       ) : (
         <Text style={styles.headerText}>Pomodoro Timer</Text>

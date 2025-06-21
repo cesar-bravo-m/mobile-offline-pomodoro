@@ -1,6 +1,5 @@
 import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import * as NavigationBar from 'expo-navigation-bar';
 import React, { useContext, useEffect } from 'react';
 import {
@@ -72,7 +71,7 @@ export default function Settings() {
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.row}>
           <Text style={styles.label}>App Version</Text>
-          <Text style={styles.value}>{(Constants.manifest as any)?.version || 'N/A'}</Text>
+          <Text style={styles.value}>{'25.06.21'}</Text>
         </View>
       </View>
 

@@ -218,7 +218,7 @@ const Notification: React.FC<NotificationProps> = ({
   }, []);
 
   // Calculate position based on stack index
-  const topOffset = stackIndex * 80; // 80px per notification
+  const topOffset = stackIndex * 100; // 100px per notification (increased from 80px to prevent overlap)
   const zIndex = totalCount - stackIndex; // Higher index = higher z-index
 
   return (
