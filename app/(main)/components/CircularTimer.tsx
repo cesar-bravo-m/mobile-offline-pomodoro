@@ -60,7 +60,7 @@ const CircularTimer = () => {
   useEffect(() => {
     if (secondsLeft === 0) {
       if (!rewardGiven.current) {
-        completeSession(mode, totalSeconds);
+        completeSession(mode, totalSeconds, true);
         rewardGiven.current = true;
       }
       setShowCelebration(true);
@@ -137,6 +137,10 @@ const CircularTimer = () => {
   };
 
   const resetTimer = () => {
+    if (secondsLeft !== totalSeconds) {
+      const elapsed = totalSeconds - secondsLeft;
+      completeSession(mode, elapsed, false);
+    }
     setSecondsLeft(totalSeconds);
     setIsRunning(false);
     setBackgroundColor(DEFAULT_BACKGROUND);
