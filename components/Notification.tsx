@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, LongPressGestureHandler, PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
+
 
 
 interface NotificationProps {
@@ -30,10 +31,17 @@ const Notification: React.FC<NotificationProps> = ({
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const pan = useRef(new Animated.Value(0)).current;
+  const progressWidth = useRef(new Animated.Value(100)).current;
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(100);
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (visible) {
       onVisibilityChange(true);
+      setProgress(100);
+      setIsPaused(false);
+      
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
@@ -45,20 +53,52 @@ const Notification: React.FC<NotificationProps> = ({
           duration: 300,
           useNativeDriver: true,
         }),
+        Animated.timing(progressWidth, {
+          toValue: 0,
+          duration: 4000,
+          useNativeDriver: false,
+        }),
       ]).start();
 
-      // Auto-hide after 4 seconds
-      const timer = setTimeout(() => {
-        hideNotification();
-      }, 4000);
+      // Start progress timer
+      startProgressTimer();
 
-      return () => clearTimeout(timer);
+      return () => {
+        stopProgressTimer();
+      };
     } else {
       hideNotification();
     }
   }, [visible]);
 
+  const startProgressTimer = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    
+    progressInterval.current = setInterval(() => {
+      if (!isPaused) {
+        setProgress(prev => {
+          const newProgress = prev - (100 / 40); // 100% over 4 seconds = 2.5% per 100ms
+          if (newProgress <= 0) {
+            hideNotification();
+            return 0;
+          }
+          return newProgress;
+        });
+      }
+    }, 100);
+  };
+
+  const stopProgressTimer = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+  };
+
   const hideNotification = () => {
+    stopProgressTimer();
     onVisibilityChange(false);
     Animated.parallel([
       Animated.timing(translateY, {
@@ -91,6 +131,14 @@ const Notification: React.FC<NotificationProps> = ({
           useNativeDriver: true,
         }).start();
       }
+    }
+  };
+
+  const onLongPressStateChange = (event: any) => {
+    if (event.nativeEvent.state === State.BEGAN) {
+      setIsPaused(true);
+    } else if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      setIsPaused(false);
     }
   };
 
@@ -151,32 +199,52 @@ const Notification: React.FC<NotificationProps> = ({
         },
       ]}
     >
-      <PanGestureHandler
-        onGestureEvent={onGestureEvent}
-        onHandlerStateChange={onHandlerStateChange}
-        enabled={isTop}
-      >
-        <Animated.View
-          style={[
-            styles.notification,
-            {
-              backgroundColor: getBackgroundColor(),
-              borderLeftColor: getColor(),
-            },
-          ]}
+      <GestureHandlerRootView>
+        <LongPressGestureHandler
+          onHandlerStateChange={onLongPressStateChange}
+          minDurationMs={200}
         >
-          <View style={styles.iconContainer}>
-            <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+          <View>
+            <PanGestureHandler
+              onGestureEvent={onGestureEvent}
+              onHandlerStateChange={onHandlerStateChange}
+              enabled={isTop}
+            >
+              <Animated.View
+                style={[
+                  styles.notification,
+                  {
+                    backgroundColor: getBackgroundColor(),
+                    borderLeftColor: getColor(),
+                  },
+                ]}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons name={getIcon() as any} size={24} color={getColor()} />
+                </View>
+                <View style={styles.content}>
+                  <Text style={styles.title}>{title}</Text>
+                  <Text style={styles.message}>{message}</Text>
+                </View>
+                <TouchableOpacity style={styles.closeButton} onPress={hideNotification}>
+                  <Ionicons name="close" size={20} color="#666" />
+                </TouchableOpacity>
+              </Animated.View>
+            </PanGestureHandler>
+            <View style={styles.progressContainer}>
+              <Animated.View
+                style={[
+                  styles.progressBar,
+                  {
+                    width: `${progress}%`,
+                    backgroundColor: getColor(),
+                  },
+                ]}
+              />
+            </View>
           </View>
-          <View style={styles.content}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.message}>{message}</Text>
-          </View>
-          <TouchableOpacity style={styles.closeButton} onPress={hideNotification}>
-            <Ionicons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </Animated.View>
-      </PanGestureHandler>
+        </LongPressGestureHandler>
+      </GestureHandlerRootView>
     </Animated.View>
   );
 };
@@ -192,7 +260,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: {
@@ -221,6 +290,17 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  progressContainer: {
+    height: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 12,
   },
 });
 

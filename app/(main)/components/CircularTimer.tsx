@@ -320,6 +320,7 @@ const CircularTimer = () => {
                   <TouchableOpacity 
                     onPress={() => {
                       showNotification('You\'ve earned a badge!', 'First pomodoro');
+                      showNotification('TEST NOTIFICATION', 'This is a test notification');
                     }} 
                   >
                     <Text>Test</Text>

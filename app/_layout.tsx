@@ -4,7 +4,6 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import React, { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,41 +33,39 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NotificationProvider>
-        <GamificationProvider>
-          <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            <Header />
-            <View style={{ flex: 1 }}>
-              <View style={{ display: tab === 'timer' ? 'flex' : 'none', flex: 1 }}>
-                <Main />
-              </View>
-              <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
-                <Badges />
-              </View>
-              <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
-                <History />
-              </View>
+    <NotificationProvider>
+      <GamificationProvider>
+        <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <Header />
+          <View style={{ flex: 1 }}>
+            <View style={{ display: tab === 'timer' ? 'flex' : 'none', flex: 1 }}>
+              <Main />
             </View>
-            <View style={styles.tabBar}>
-              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
-                <Ionicons name="timer" size={24} color={tab === 'timer' ? '#f26b5b' : '#402050'} />
-                <Text style={styles.tabLabel}>Timer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('badges')}>
-                <Ionicons name="trophy" size={24} color={tab === 'badges' ? '#f26b5b' : '#402050'} />
-                <Text style={styles.tabLabel}>Badges</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
-                <Ionicons name="document-text" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
-                <Text style={styles.tabLabel}>Log</Text>
-              </TouchableOpacity>
+            <View style={{ display: tab === 'badges' ? 'flex' : 'none', flex: 1 }}>
+              <Badges />
             </View>
-            <StatusBar style="dark" />
+            <View style={{ display: tab === 'history' ? 'flex' : 'none', flex: 1 }}>
+              <History />
+            </View>
           </View>
-        </GamificationProvider>
-      </NotificationProvider>
-    </GestureHandlerRootView>
+          <View style={styles.tabBar}>
+            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('timer')}>
+              <Ionicons name="timer" size={24} color={tab === 'timer' ? '#f26b5b' : '#402050'} />
+              <Text style={styles.tabLabel}>Timer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('badges')}>
+              <Ionicons name="trophy" size={24} color={tab === 'badges' ? '#f26b5b' : '#402050'} />
+              <Text style={styles.tabLabel}>Badges</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.tabItem} onPress={() => setTab('history')}>
+              <Ionicons name="document-text" size={24} color={tab === 'history' ? '#f26b5b' : '#402050'} />
+              <Text style={styles.tabLabel}>Log</Text>
+            </TouchableOpacity>
+          </View>
+          <StatusBar style="dark" />
+        </View>
+      </GamificationProvider>
+    </NotificationProvider>
   );
 }
 

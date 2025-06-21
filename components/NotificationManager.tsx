@@ -23,7 +23,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
   const showNotification = (title: string, message: string, type: 'success' | 'info' | 'warning' = 'success') => {
-    const id = Date.now().toString();
+    const id = Math.random().toString(36).substring(2, 15);
     const newNotification: NotificationData = { 
       id, 
       title, 
