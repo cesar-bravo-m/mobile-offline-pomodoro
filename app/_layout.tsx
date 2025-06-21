@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ErrorSuppressor from '@/components/ErrorSuppressor';
 import { NotificationProvider } from '@/components/NotificationManager';
 import { GamificationContext, GamificationProvider } from '@/contexts/GamificationContext';
+import { OBJECTIVES } from '@/constants/objectives';
 
 import Main from './(main)/index';
 import Badges from './Badges';
@@ -116,8 +117,10 @@ export default function RootLayout() {
   );
 }
 
+const getEmoji = (name: string) => OBJECTIVES.find(o => o.name === name)?.emoji || '🎯';
+
 const Header = () => {
-  const { coins, level, isTimerRunning, displayMode, remainingTime } = useContext(GamificationContext);
+  const { coins, level, isTimerRunning, displayObjective, remainingTime } = useContext(GamificationContext);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -130,13 +133,8 @@ const Header = () => {
       {isTimerRunning && remainingTime !== null ? (
         <View style={styles.timerHeader}>
           <View style={styles.timerInfo}>
-            <Ionicons 
-              name={displayMode === 'focus' ? 'timer' : 'cafe'} 
-              size={16} 
-              color={displayMode === 'focus' ? '#f26b5b' : '#4CAF50'} 
-            />
             <Text style={styles.timerText}>
-              {displayMode === 'focus' ? 'Focus' : 'Break'} • {formatTime(remainingTime)}
+              {getEmoji(displayObjective || 'Focus')} {displayObjective || 'Focus'} • {formatTime(remainingTime)}
             </Text>
           </View>
           <Text style={styles.statsText}>Lvl {level} • {coins} coins</Text>

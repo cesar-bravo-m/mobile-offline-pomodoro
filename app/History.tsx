@@ -1,6 +1,7 @@
 import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
+import { OBJECTIVES } from '@/constants/objectives';
 import React, { useContext, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -29,13 +30,7 @@ export default function History() {
     });
   };
 
-  const getModeIcon = (mode: 'focus' | 'break') => {
-    return mode === 'focus' ? 'timer' : 'cafe';
-  };
-
-  const getModeColor = (mode: 'focus' | 'break') => {
-    return mode === 'focus' ? '#f26b5b' : '#4CAF50';
-  };
+  const getEmoji = (name: string) => OBJECTIVES.find(o => o.name === name)?.emoji || '🎯';
 
   if (sessions.length === 0) {
     return (
@@ -46,7 +41,7 @@ export default function History() {
           Your Pomodoro session logs will appear here
         </Text>
         <Text style={styles.emptySubtext}>
-          Complete focus and break sessions to see your activity history
+          Complete sessions to see your activity history
         </Text>
       </View>
     );
@@ -64,24 +59,8 @@ export default function History() {
       <View style={styles.summaryContainer}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Focus Sessions</Text>
-            <Text style={styles.summaryValue}>
-              {sessions.filter(s => s.mode === 'focus').length}
-            </Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Break Sessions</Text>
-            <Text style={styles.summaryValue}>
-              {sessions.filter(s => s.mode === 'break').length}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Total Sessions</Text>
-            <Text style={styles.summaryValue}>
-              {sessions.length}
-            </Text>
+            <Text style={styles.summaryValue}>{sessions.length}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Total Time</Text>
@@ -111,13 +90,8 @@ export default function History() {
           <View key={index} style={styles.tableRow}>
             <View style={styles.cell}>
               <View style={styles.modeContainer}>
-                <Ionicons 
-                  name={getModeIcon(session.mode)} 
-                  size={16} 
-                  color={getModeColor(session.mode)} 
-                />
-                <Text style={[styles.modeText, { color: getModeColor(session.mode) }]}>
-                  {session.mode === 'focus' ? 'Focus' : 'Break'}
+                <Text style={styles.modeText}>
+                  {getEmoji(session.objective)} {session.objective}
                 </Text>
               </View>
             </View>
