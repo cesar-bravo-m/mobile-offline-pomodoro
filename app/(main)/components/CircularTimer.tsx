@@ -1,59 +1,18 @@
+import { GamificationContext } from '@/contexts/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import * as BackgroundFetch from 'expo-background-fetch';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
-import * as TaskManager from 'expo-task-manager';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Modal, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Fireworks from './Fireworks';
 
 const TIMER_INTERVALS = [5, 10, 15, 20, 25, 30, 45];
 const DEFAULT_MINUTES = 15;
 const TOTAL_SECONDS = DEFAULT_MINUTES * 60;
-const TIMER_STATE_KEY = '@timer_state';
-const BACKGROUND_TIMER_TASK = 'BACKGROUND_TIMER_TASK';
 const DEFAULT_BACKGROUND = '#fdf1ef';
 const BREAK_BACKGROUND = '#e8f5e9';
-
-TaskManager.defineTask(BACKGROUND_TIMER_TASK, async () => {
-  try {
-    const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
-    if (savedState) {
-      const state: TimerState = JSON.parse(savedState);
-      const now = Date.now();
-      const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
-      
-      let newSecondsLeft = state.secondsLeft;
-      if (state.isRunning) {
-        newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
-      }
-      
-      const newState: TimerState = {
-        secondsLeft: newSecondsLeft,
-        isRunning: state.isRunning && newSecondsLeft > 0,
-        lastUpdated: now,
-        totalSeconds: state.totalSeconds,
-        mode: state.mode,
-      };
-      
-      await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(newState));
-    }
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch (error) {
-    console.error('Background task error:', error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
-
-interface TimerState {
-  secondsLeft: number;
-  isRunning: boolean;
-  lastUpdated: number;
-  totalSeconds: number;
-  mode: 'focus' | 'break';
-}
 
 const CircularTimer = () => {
   const { width, height } = useWindowDimensions();
@@ -62,7 +21,7 @@ const CircularTimer = () => {
   const timerSize = isTablet ? 300 : 250;
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
   const [totalSeconds, setTotalSeconds] = useState(TOTAL_SECONDS);
-  const [isRunning, setIsRunning] = useState(true);
+  const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingDuration, setIsEditingDuration] = useState(false);
@@ -78,6 +37,13 @@ const CircularTimer = () => {
   const intervalRef = useRef<number | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const { completePomodoro } = useContext(GamificationContext);
+  const rewardGiven = useRef(false);
+
+  useEffect(() => {
+    NavigationBar.setButtonStyleAsync('dark');
+    NavigationBar.setBackgroundColorAsync('#000');
+  }, []);
 
   useEffect(() => {
     activateKeepAwake();
@@ -91,109 +57,12 @@ const CircularTimer = () => {
     }
   }, [keepScreenOn]);
 
-  // Register background task
-  useEffect(() => {
-    const registerBackgroundTask = async () => {
-      try {
-        await BackgroundFetch.registerTaskAsync(BACKGROUND_TIMER_TASK, {
-          minimumInterval: 1, // 1 second
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
-      } catch (err) {
-        console.error("Task registration failed:", err);
-      }
-    };
-
-    registerBackgroundTask();
-  }, []);
-
-  // Load saved timer state when component mounts
-  useEffect(() => {
-    const loadTimerState = async () => {
-      try {
-        const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
-        if (savedState) {
-          const state: TimerState = JSON.parse(savedState);
-          const now = Date.now();
-          const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
-          
-          let newSecondsLeft = state.secondsLeft;
-          if (state.isRunning) {
-            newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
-          }
-          
-          setSecondsLeft(newSecondsLeft);
-          setIsRunning(state.isRunning && newSecondsLeft > 0);
-          setTotalSeconds(state.totalSeconds);
-          setMode(state.mode || 'focus');
-          
-          const progress = newSecondsLeft / state.totalSeconds;
-          animatedValue.setValue(progress);
-        }
-      } catch (error) {
-        console.error('Error loading timer state:', error);
-      }
-    };
-
-    loadTimerState();
-  }, []);
-
-  // Save timer state whenever it changes
-  useEffect(() => {
-    const saveTimerState = async () => {
-      try {
-        const state: TimerState = {
-          secondsLeft,
-          isRunning,
-          lastUpdated: Date.now(),
-          totalSeconds,
-          mode,
-        };
-        await AsyncStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state));
-      } catch (error) {
-        console.error('Error saving timer state:', error);
-      }
-    };
-
-    saveTimerState();
-  }, [secondsLeft, isRunning, totalSeconds, mode]);
-
-  // Handle app state changes
-  useEffect(() => {
-    const handleAppStateChange = async (nextAppState: string) => {
-      if (nextAppState === 'active') {
-        // App came to foreground, load the latest state
-        const savedState = await AsyncStorage.getItem(TIMER_STATE_KEY);
-        if (savedState) {
-          const state: TimerState = JSON.parse(savedState);
-          const now = Date.now();
-          const elapsedSeconds = Math.floor((now - state.lastUpdated) / 1000);
-          
-          let newSecondsLeft = state.secondsLeft;
-          if (state.isRunning) {
-            newSecondsLeft = Math.max(0, state.secondsLeft - elapsedSeconds);
-          }
-          
-          setSecondsLeft(newSecondsLeft);
-          setIsRunning(state.isRunning && newSecondsLeft > 0);
-          setTotalSeconds(state.totalSeconds);
-          setMode(state.mode || 'focus');
-          
-          const progress = newSecondsLeft / TOTAL_SECONDS;
-          animatedValue.setValue(progress);
-        }
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
   useEffect(() => {
     if (secondsLeft === 0) {
+      if (!rewardGiven.current && mode === 'focus') {
+        completePomodoro();
+        rewardGiven.current = true;
+      }
       setShowCelebration(true);
 
       // Reset and start rainbow animation (two cycles)
@@ -218,6 +87,7 @@ const CircularTimer = () => {
         clearTimeout(celebrationTimeout);
       };
     } else {
+      rewardGiven.current = false;
       setShowCelebration(false);
       gradientAnim.stopAnimation();
     }
