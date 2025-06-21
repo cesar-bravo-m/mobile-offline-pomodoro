@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useState } from 'react';
 
 interface GamificationState {
   coins: number;
@@ -12,8 +11,6 @@ interface GamificationContextType extends GamificationState {
   completePomodoro: () => void;
 }
 
-const GAMIFICATION_STATE_KEY = '@gamification_state';
-
 const defaultState: GamificationState = {
   coins: 0,
   level: 1,
@@ -23,30 +20,11 @@ const defaultState: GamificationState = {
 
 export const GamificationContext = createContext<GamificationContextType>({
   ...defaultState,
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   completePomodoro: () => {},
 });
 
 export const GamificationProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, setState] = useState<GamificationState>(defaultState);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(GAMIFICATION_STATE_KEY);
-        if (saved) {
-          setState(JSON.parse(saved));
-        }
-      } catch (e) {
-        console.error('Failed to load gamification state', e);
-      }
-    };
-    load();
-  }, []);
-
-  useEffect(() => {
-    AsyncStorage.setItem(GAMIFICATION_STATE_KEY, JSON.stringify(state)).catch(console.error);
-  }, [state]);
 
   const completePomodoro = () => {
     const completed = state.completedPomodoros + 1;
