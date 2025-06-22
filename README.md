@@ -1,50 +1,78 @@
-# Welcome to your Expo app 👋
+# Offline Pomodoro
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A gamified Pomodoro timer app built with React Native and Expo
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+pomodoro/
+├── app/                    # Expo Router app directory
+│   ├── (main)/            # Main tab group
+│   │   ├── components/    # Timer and celebration components
+│   │   └── index.tsx      # Main timer screen
+│   ├── _layout.tsx        # Root layout
+│   ├── Badges.tsx         # Badge collection screen
+│   ├── History.tsx        # Session history screen
+│   └── Settings.tsx       # App settings screen
+├── components/            # Reusable UI components
+│   ├── ui/               # Platform-specific UI components
+│   └── NotificationManager.tsx
+├── contexts/             # React Context providers
+│   └── GamificationContext.tsx  # Main state management
+├── constants/            # App constants and configurations
+│   ├── badges.ts         # Badge definitions and tiers
+│   ├── objectives.ts     # Focus objectives
+│   └── Colors.ts         # Theme colors
+├── hooks/               # Custom React hooks
+├── assets/              # Images, fonts, and sounds
+└── screenshots/         # App screenshots
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Key Components
 
-## Learn more
+### CircularTimer
+The main timer component featuring:
+- Animated circular progress indicator
+- Custom duration selection
+- Objective setting
+- Sound notifications
+- Screen wake lock
 
-To learn more about developing your project with Expo, look at the following resources:
+### GamificationContext
+Central state management for:
+- Timer state (running, paused, completed)
+- User progress (coins, level, badges)
+- Session history
+- Persistent storage
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Badge System
+Three-tier badge system with progressive unlocking:
+- **Tier 1**: Basic completion badges
+- **Tier 2**: Time and behavior-based badges  
+- **Tier 3**: Advanced collection badges
 
-## Join the community
+## Getting Started
 
-Join our community of developers creating universal apps.
+1. **Install dependencies**:
+   ```bash
+   npm install
+   # or
+   pnpm install
+   ```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+2. **Start development server**:
+   ```bash
+   npm start
+   # or
+   pnpm start
+   ```
+
+3. **Run on device**:
+   - Android: `npm run android`
+
+## Development
+
+- **Linting**: `npm run lint`
+- **Reset Project**: `npm run reset-project`
+
+## License
+
+   Bravo Ciencia y Tecnolog SpA 2025 - All rights reserved.
